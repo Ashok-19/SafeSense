@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools==70.3.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safesense-har"
+version = "1.0.0"
+description = "SafeSense: robust and efficient skeleton-inertial human activity recognition"
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+  "numpy==2.2.6",
+  "scipy==1.15.3",
+  "torch==2.10.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

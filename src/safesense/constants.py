@@ -1,0 +1,23 @@
+"""Constants for the frozen SafeSense paper configuration."""
+
+NUM_CLASSES = 27
+FRAME_COUNT = 128
+SKELETON_INPUTS = 177
+IMU_INPUTS = 12
+LAG_SHIFTS = tuple(range(-4, 5))
+
+FACTORIZED_CLEAN_WEIGHT = 0.55
+FACTORIZED_TEMPORAL_WEIGHT = 0.15
+FACTORIZED_STRUCTURED_WEIGHT = 0.15
+FACTORIZED_STYLE_WEIGHT = 0.15
+FACTORIZED_EXPERT_AUXILIARY_WEIGHT = 0.15
+FACTORIZED_ALIGNMENT_WEIGHT = 0.15
+FACTORIZED_CONSISTENCY_WEIGHT = 0.10
+TEMPORAL_CONSISTENCY_TEMPERATURE = 2.0
+
+# UTD-MHAD Kinect-1 topology, zero-based joint indices.
+BONE_EDGES = (
+    (0, 1), (2, 1), (4, 1), (8, 1), (3, 2), (12, 3), (16, 3),
+    (5, 4), (6, 5), (7, 6), (9, 8), (10, 9), (11, 10), (13, 12),
+    (14, 13), (15, 14), (17, 16), (18, 17), (19, 18),
+)

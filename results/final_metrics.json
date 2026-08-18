@@ -1,0 +1,44 @@
+{
+  "model": "SafeSenseFactorized",
+  "dataset": "UTD-MHAD",
+  "modalities": [
+    "skeleton",
+    "inertial"
+  ],
+  "seed": 22,
+  "epochs": 60,
+  "swa_epochs_inclusive": [
+    45,
+    60
+  ],
+  "parameters": 440562,
+  "test_samples": 430,
+  "correct": 414,
+  "clean_accuracy": 0.9627906976744186,
+  "clean_macro_f1": 0.96364139833354,
+  "clean_accuracy_wilson_95_ci": [
+    0.9404171552381526,
+    0.9769686591141189
+  ],
+  "equal_category_corrupted_accuracy": 0.851298449612403,
+  "equal_category_corrupted_macro_f1": 0.8480595778854244,
+  "category_accuracy": {
+    "shift": 0.9595930232558139,
+    "frame_loss": 0.9434108527131783,
+    "noise": 0.8829457364341085,
+    "missing": 0.5705426356589147,
+    "composite": 0.9
+  },
+  "deployment": {
+    "hardware": "NVIDIA Tesla T4",
+    "precision": "FP32",
+    "batch_size": 1,
+    "scope": "model-only",
+    "cuda_graph_median_ms": 1.7323545,
+    "cuda_graph_p95_ms": 1.73954425,
+    "eager_median_ms": 9.654001,
+    "eager_p95_ms": 11.41634,
+    "eager_graph_prediction_mismatches": 0,
+    "equivalence_predictions_checked": 10750
+  }
+}

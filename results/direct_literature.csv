@@ -1,0 +1,5 @@
+model,year,modalities,protocol,accuracy_pct,comparison_class,caveat
+Residual-Conv + Gram,2025,Skeleton+IMU,odd/even,93.5,direct,recent direct S+I
+Fusion-GCN,2021,Skeleton+IMU,cross-subject,94.42,direct,published direct baseline
+SafeSense,2026,Skeleton+IMU,odd/even,96.27906976744185,project,selected on odd folds
+CMC-CMKM,2022,Skeleton+IMU,odd/even; SSL linear eval,97.67,direct-close,different learning objective

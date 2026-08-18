@@ -1,0 +1,185 @@
+{
+  "corruption_seed": 20260814,
+  "test_samples": 430,
+  "noise_scales": {
+    "skeleton": 0.29760614349538295,
+    "imu": 79.29619498449236
+  },
+  "scenario_count": 25,
+  "scenarios": [
+    {
+      "scenario": "clean",
+      "category": "clean",
+      "accuracy": 0.9627906976744186,
+      "macro_f1": 0.96364139833354
+    },
+    {
+      "scenario": "skeleton_shift_-4",
+      "category": "shift",
+      "accuracy": 0.9651162790697675,
+      "macro_f1": 0.9654906602431141
+    },
+    {
+      "scenario": "skeleton_shift_-2",
+      "category": "shift",
+      "accuracy": 0.9627906976744186,
+      "macro_f1": 0.9628516942152464
+    },
+    {
+      "scenario": "skeleton_shift_+2",
+      "category": "shift",
+      "accuracy": 0.9558139534883721,
+      "macro_f1": 0.9559799502238572
+    },
+    {
+      "scenario": "skeleton_shift_+4",
+      "category": "shift",
+      "accuracy": 0.9558139534883721,
+      "macro_f1": 0.9562980089229298
+    },
+    {
+      "scenario": "skeleton_frame_loss_10",
+      "category": "frame_loss",
+      "accuracy": 0.9558139534883721,
+      "macro_f1": 0.9569089473296764
+    },
+    {
+      "scenario": "skeleton_frame_loss_30",
+      "category": "frame_loss",
+      "accuracy": 0.9441860465116279,
+      "macro_f1": 0.9443668776323251
+    },
+    {
+      "scenario": "skeleton_frame_loss_50",
+      "category": "frame_loss",
+      "accuracy": 0.9302325581395349,
+      "macro_f1": 0.9305395407748448
+    },
+    {
+      "scenario": "skeleton_noise_0.1",
+      "category": "noise",
+      "accuracy": 0.9279069767441861,
+      "macro_f1": 0.9262844216553007
+    },
+    {
+      "scenario": "skeleton_noise_0.3",
+      "category": "noise",
+      "accuracy": 0.8511627906976744,
+      "macro_f1": 0.8432987083154253
+    },
+    {
+      "scenario": "skeleton_noise_0.5",
+      "category": "noise",
+      "accuracy": 0.8302325581395349,
+      "macro_f1": 0.8227929482895138
+    },
+    {
+      "scenario": "imu_shift_-4",
+      "category": "shift",
+      "accuracy": 0.9511627906976744,
+      "macro_f1": 0.9522906265823233
+    },
+    {
+      "scenario": "imu_shift_-2",
+      "category": "shift",
+      "accuracy": 0.9558139534883721,
+      "macro_f1": 0.9568506812358005
+    },
+    {
+      "scenario": "imu_shift_+2",
+      "category": "shift",
+      "accuracy": 0.9674418604651163,
+      "macro_f1": 0.9673415745522007
+    },
+    {
+      "scenario": "imu_shift_+4",
+      "category": "shift",
+      "accuracy": 0.9627906976744186,
+      "macro_f1": 0.9633511728625582
+    },
+    {
+      "scenario": "imu_frame_loss_10",
+      "category": "frame_loss",
+      "accuracy": 0.958139534883721,
+      "macro_f1": 0.9590147022413811
+    },
+    {
+      "scenario": "imu_frame_loss_30",
+      "category": "frame_loss",
+      "accuracy": 0.9465116279069767,
+      "macro_f1": 0.9472408304591121
+    },
+    {
+      "scenario": "imu_frame_loss_50",
+      "category": "frame_loss",
+      "accuracy": 0.9255813953488372,
+      "macro_f1": 0.9269776357166486
+    },
+    {
+      "scenario": "imu_noise_0.1",
+      "category": "noise",
+      "accuracy": 0.8953488372093024,
+      "macro_f1": 0.8950697402315816
+    },
+    {
+      "scenario": "imu_noise_0.3",
+      "category": "noise",
+      "accuracy": 0.8953488372093024,
+      "macro_f1": 0.8950697402315816
+    },
+    {
+      "scenario": "imu_noise_0.5",
+      "category": "noise",
+      "accuracy": 0.8976744186046511,
+      "macro_f1": 0.8977878322742924
+    },
+    {
+      "scenario": "missing_skeleton",
+      "category": "missing",
+      "accuracy": 0.7767441860465116,
+      "macro_f1": 0.76617583192452
+    },
+    {
+      "scenario": "missing_imu",
+      "category": "missing",
+      "accuracy": 0.8976744186046511,
+      "macro_f1": 0.8984576571227798
+    },
+    {
+      "scenario": "missing_both",
+      "category": "missing",
+      "accuracy": 0.037209302325581395,
+      "macro_f1": 0.002657365886065438
+    },
+    {
+      "scenario": "imu_composite_shift_+4_loss_30_noise_0.3",
+      "category": "composite",
+      "accuracy": 0.9,
+      "macro_f1": 0.9002521541526327
+    }
+  ],
+  "category_means": {
+    "shift": {
+      "accuracy": 0.9595930232558139,
+      "macro_f1": 0.9600567961047538
+    },
+    "frame_loss": {
+      "accuracy": 0.9434108527131784,
+      "macro_f1": 0.9441747556923312
+    },
+    "noise": {
+      "accuracy": 0.8829457364341083,
+      "macro_f1": 0.8800505651662826
+    },
+    "missing": {
+      "accuracy": 0.5705426356589146,
+      "macro_f1": 0.5557636183111218
+    },
+    "composite": {
+      "accuracy": 0.9,
+      "macro_f1": 0.9002521541526327
+    }
+  },
+  "equal_category_corrupted_accuracy": 0.851298449612403,
+  "equal_category_corrupted_macro_f1": 0.8480595778854244
+}
