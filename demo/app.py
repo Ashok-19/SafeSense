@@ -29,7 +29,13 @@ args = ap.parse_args()
 
 # ---------------------------------------------------------------- model
 ck = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
-CLASSES = ck["classes"]; model = SafeSensePose(ck["num_classes"], widths=tuple(ck.get("widths", (64, 64, 64, 128, 128, 128)))); model.load_state_dict(ck["model"]); model.eval()
+CLASSES = ck["classes"]; ORIG = ck.get("arch") == "safesense_orig"
+if ORIG:   # original SafeSense architecture (06_train_safesense_original_ntu120)
+    from safesense_orig import SafeSenseCOCO, body_window
+    model = SafeSenseCOCO(ck["num_classes"])
+else:      # SafeSense-Pose (04 / 05 notebooks)
+    model = SafeSensePose(ck["num_classes"], widths=tuple(ck.get("widths", (64, 64, 64, 128, 128, 128))))
+model.load_state_dict(ck["model"]); model.eval()
 torch.set_num_threads(2)
 ACTIONS = [a.strip() for a in args.actions.split(",") if a.strip()] or list(ck["demo_actions"])
 unknown = [a for a in ACTIONS if a not in CLASSES]
@@ -151,7 +157,10 @@ def window_tensor():
     idx = np.clip(np.searchsorted(ts, grid), 0, n - 1)
     x = pack(kp, sc, idx)
     motion = float(np.abs(x[0, :, :, 3:5]).mean())   # mean joint speed of the main person, in torso lengths per step
-    return torch.from_numpy(x)[None], motion
+    if ORIG:
+        raw, mk = body_window(kp, sc, idx)
+        return (torch.from_numpy(raw)[None], torch.from_numpy(mk)[None]), motion
+    return (torch.from_numpy(x)[None],), motion
 
 
 def action_loop():
@@ -163,7 +172,9 @@ def action_loop():
         if x is None or not recent:
             with lock: S.update(label="no person in view" if not recent else "watching...", conf=0.0, top=[], motion=0.0)
             smooth = None; continue
-        with torch.no_grad(): z = model(x)[0]
+        with torch.no_grad():
+            z = model(*x)
+            z = (z[0] if ORIG else z)[0]
         p_all = torch.softmax(z, 0)                    # over all 120 NTU actions
         p = torch.softmax(z[ACT_IDX], 0).numpy()        # restricted to the demo actions
         smooth = p if smooth is None else 0.5 * smooth + 0.5 * p
