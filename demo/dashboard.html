@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SafeSense Live</title>
+<style>
+  :root { --bg:#f4f6f8; --card:#ffffff; --ink:#1b2430; --muted:#5f6b7a; --line:#dde3ea; --accent:#156082; --accent-soft:#e3eff5; --alert:#c62828; --alert-soft:#fdecea; --ok:#2e7d32; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:Arial, Helvetica, sans-serif; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:14px 22px; background:var(--card); border-bottom:3px solid var(--accent); }
+  header h1 { margin:0; font-size:22px; color:var(--accent); letter-spacing:.3px; }
+  header .src { font-size:13px; color:var(--muted); }
+  main { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr); gap:18px; padding:18px 22px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .video { padding:0; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111; min-height:360px; }
+  .video img { width:100%; height:auto; display:block; }
+  .side { display:flex; flex-direction:column; gap:14px; }
+  .label-title { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px; }
+  #label { font-size:34px; font-weight:bold; line-height:1.15; }
+  #conf { margin-top:6px; color:var(--muted); font-size:14px; }
+  .bar { display:grid; grid-template-columns:150px 1fr 46px; gap:8px; align-items:center; font-size:13px; margin:7px 0; }
+  .bar .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .track { height:10px; background:var(--accent-soft); border-radius:5px; overflow:hidden; }
+  .fill { height:100%; background:var(--accent); width:0; transition:width .2s; }
+  .bar .val { text-align:right; color:var(--muted); }
+  #alert { display:none; background:var(--alert-soft); border:2px solid var(--alert); color:var(--alert); font-weight:bold; font-size:22px; text-align:center; padding:14px; border-radius:10px; animation:pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity:.65; } }
+  #events { list-style:none; margin:0; padding:0; max-height:220px; overflow:auto; font-size:14px; }
+  #events li { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); }
+  #events li.warn { color:var(--alert); font-weight:bold; }
+  #events .time { color:var(--muted); font-variant-numeric:tabular-nums; margin-right:10px; }
+  .stats { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; padding:0 22px 20px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .stat .k { font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); }
+  .stat .v { font-size:20px; font-weight:bold; margin-top:3px; font-variant-numeric:tabular-nums; }
+  button { border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:6px; padding:4px 10px; cursor:pointer; font-size:12px; }
+  .row { display:flex; justify-content:space-between; align-items:center; }
+  #status { font-size:13px; color:var(--muted); }
+  @media (max-width: 900px) { main { grid-template-columns:1fr; } .stats { grid-template-columns:repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>SafeSense Live: Skeleton-based Action Recognition</h1>
+  <div class="src">Source: <span id="source">-</span> &nbsp;|&nbsp; <span id="status">connecting</span></div>
+</header>
+<main>
+  <div class="card video"><img id="video" src="/stream.mjpg" alt="Live camera with detected skeleton"></div>
+  <div class="side">
+    <div id="alert">ALERT: <span id="alertText"></span> detected</div>
+    <div class="card">
+      <div class="label-title">Current action</div>
+      <div id="label">starting</div>
+      <div id="conf">&nbsp;</div>
+    </div>
+    <div class="card">
+      <div class="label-title">Confidence (top 5 demo actions)</div>
+      <div id="bars"></div>
+    </div>
+    <div class="card">
+      <div class="row"><div class="label-title">Recent actions</div><button onclick="fetch('/clear',{method:'POST'})">Clear</button></div>
+      <ul id="events"></ul>
+    </div>
+  </div>
+</main>
+<div class="stats">
+  <div class="stat"><div class="k">Camera FPS</div><div class="v" id="camfps">-</div></div>
+  <div class="stat"><div class="k">Pose FPS</div><div class="v" id="posefps">-</div></div>
+  <div class="stat"><div class="k">Pose time</div><div class="v" id="posems">-</div></div>
+  <div class="stat"><div class="k">Action model time</div><div class="v" id="actms">-</div></div>
+  <div class="stat"><div class="k">People in view</div><div class="v" id="persons">-</div></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const ALERTS = new Set(["falling", "staggering"]);
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+async function tick() {
+  try {
+    const s = await (await fetch("/state", {cache: "no-store"})).json();
+    $("source").textContent = s.source; $("status").textContent = s.status;
+    $("label").textContent = cap(s.label);
+    $("label").style.color = ALERTS.has(s.label) ? "var(--alert)" : "var(--ink)";
+    $("conf").textContent = s.conf > 0 ? `confidence ${(s.conf * 100).toFixed(0)}%` : " ";
+    $("bars").innerHTML = s.top.map(([n, v]) =>
+      `<div class="bar"><span class="name" title="${n}">${cap(n)}</span><div class="track"><div class="fill" style="width:${(v * 100).toFixed(1)}%"></div></div><span class="val">${(v * 100).toFixed(0)}%</span></div>`).join("");
+    $("events").innerHTML = s.events.map(e =>
+      `<li class="${ALERTS.has(e.label) ? "warn" : ""}"><span><span class="time">${e.t}</span>${cap(e.label)}</span><span>${(e.conf * 100).toFixed(0)}%</span></li>`).join("");
+    $("alert").style.display = s.alert ? "block" : "none"; $("alertText").textContent = (s.alert || "").toUpperCase();
+    $("camfps").textContent = s.cam_fps ? s.cam_fps.toFixed(1) : "-";
+    $("posefps").textContent = s.pose_fps ? s.pose_fps.toFixed(1) : "-";
+    $("posems").textContent = s.pose_ms ? s.pose_ms.toFixed(0) + " ms" : "-";
+    $("actms").textContent = s.act_ms ? s.act_ms.toFixed(1) + " ms" : "-";
+    $("persons").textContent = s.persons;
+  } catch (e) { $("status").textContent = "dashboard lost connection to the server"; }
+  setTimeout(tick, 250);
+}
+tick();
+</script>
+</body>
+</html>

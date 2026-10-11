@@ -1,0 +1,7 @@
+torch
+numpy
+opencv-python
+onnxruntime
+rtmlib
+fastapi
+uvicorn
