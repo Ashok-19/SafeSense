@@ -29,7 +29,7 @@ args = ap.parse_args()
 
 # ---------------------------------------------------------------- model
 ck = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
-CLASSES = ck["classes"]; model = SafeSensePose(ck["num_classes"]); model.load_state_dict(ck["model"]); model.eval()
+CLASSES = ck["classes"]; model = SafeSensePose(ck["num_classes"], widths=tuple(ck.get("widths", (64, 64, 64, 128, 128, 128)))); model.load_state_dict(ck["model"]); model.eval()
 torch.set_num_threads(2)
 ACTIONS = [a.strip() for a in args.actions.split(",") if a.strip()] or list(ck["demo_actions"])
 unknown = [a for a in ACTIONS if a not in CLASSES]
