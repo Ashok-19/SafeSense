@@ -21,16 +21,25 @@ ap.add_argument("--checkpoint", default=str(DEFAULT_CK), help="model file (defau
 ap.add_argument("--pose", default="lightweight", choices=["lightweight", "balanced", "performance"], help="RTMPose size: lightweight is fastest on CPU")
 ap.add_argument("--window", type=float, default=3.0, help="seconds of motion the model looks at")
 ap.add_argument("--every", type=float, default=0.25, help="seconds between action predictions")
-ap.add_argument("--threshold", type=float, default=0.45, help="minimum smoothed confidence to show an action")
+ap.add_argument("--threshold", type=float, default=0.40, help="minimum smoothed confidence to show an action")
 ap.add_argument("--still", type=float, default=0.18, help="movement range (torso lengths) below which the person counts as still; 0 turns it off")
 ap.add_argument("--debug", action="store_true", help="print motion and the top prediction for every window")
-ap.add_argument("--actions", default="", help="comma-separated demo actions (default: the list saved in the checkpoint)")
+ap.add_argument("--actions", default="", help='comma-separated NTU action names, "all" for all 120 (default: the single-person actions recognised best)')
 ap.add_argument("--port", type=int, default=8000)
 ap.add_argument("--stgcnpp", action="store_true", help="use the pretrained PYSKL ST-GCN++ (stgcnpp_j.pth / stgcnpp_b.pth next to app.py)")
 ap.add_argument("--mock", action="store_true", help="synthetic skeleton instead of camera and pose model")
 args = ap.parse_args()
 
 # ---------------------------------------------------------------- model
+# Single-person NTU-120 actions that SafeSense-Pose recognises at 90%+ on unseen people (results_ntu120.json),
+# plus a few everyday ones. Two-person actions are left out: the demo shows one person.
+STRONG = ["jump up", "arm circles", "squat down", "cross arms", "arm swings", "pickup", "staggering", "sitting down",
+          "standing up", "falling", "bounce ball", "nod head/bow", "salute", "cross hands in front (say stop)", "shake head",
+          "kicking something", "wear jacket", "take off jacket", "check time (from watch)", "butt kicks (kick backward)",
+          "hopping (one foot jumping)", "touch back (backache)", "running on the spot", "hands up (both hands)",
+          "put the palms together", "thumb down", "side kick", "touch chest (stomachache/heart pain)", "cross toe touch",
+          "touch neck (neckache)", "touch head (headache)", "make a phone call/answer phone", "hand waving", "clapping",
+          "drink water", "throw", "stretch oneself"]
 DEMO_DEFAULT = ["drink water", "sitting down", "standing up", "clapping", "hand waving", "jump up", "make a phone call/answer phone",
                 "falling", "touch head (headache)", "touch chest (stomachache/heart pain)", "staggering", "squat down",
                 "hands up (both hands)", "arm circles", "running on the spot", "kicking something", "pickup", "cross arms"]
@@ -61,7 +70,7 @@ else:      # SafeSense-Pose (04 / 05 notebooks)
     model = SafeSensePose(ck["num_classes"], widths=tuple(ck.get("widths", (64, 64, 64, 128, 128, 128))))
 if not PYSKL: model.load_state_dict(ck["model"]); model.eval()
 torch.set_num_threads(4 if PYSKL else 2)
-ACTIONS = [a.strip() for a in args.actions.split(",") if a.strip()] or list(ck["demo_actions"])
+ACTIONS = list(CLASSES) if args.actions.strip() == "all" else ([a.strip() for a in args.actions.split(",") if a.strip()] or STRONG)
 unknown = [a for a in ACTIONS if a not in CLASSES]
 if unknown: raise SystemExit(f"not NTU-120 class names: {unknown}")
 ACT_IDX = [CLASSES.index(a) for a in ACTIONS]
@@ -121,6 +130,16 @@ class MockPose:
         return kp[None].astype(np.float32), np.full((1, 17), 0.9, np.float32)
 
 
+def select_people(kp, sc):
+    """Pose estimator output -> the two biggest confidently detected people, biggest first: [P,17,2], [P,17]."""
+    kp = np.asarray(kp, np.float32).reshape(-1, 17, 2); sc = np.clip(np.asarray(sc, np.float32).reshape(-1, 17), 0, 1)
+    keep = sc.mean(1) > 0.3
+    kp, sc = kp[keep], sc[keep]
+    if len(kp):
+        area = np.ptp(kp[..., 0], 1) * np.ptp(kp[..., 1], 1); o = np.argsort(-area)[:2]; kp, sc = kp[o], sc[o]
+    return kp, sc
+
+
 def pose_loop():
     if args.mock: est = MockPose()
     else:
@@ -134,11 +153,7 @@ def pose_loop():
         if frame is None or ft == last_t: time.sleep(0.005); continue
         last_t = ft; t0 = time.time()
         kp, sc = est(frame)
-        kp = np.asarray(kp, np.float32).reshape(-1, 17, 2); sc = np.clip(np.asarray(sc, np.float32).reshape(-1, 17), 0, 1)
-        keep = sc.mean(1) > 0.3
-        kp, sc = kp[keep], sc[keep]
-        if len(kp):  # the two biggest people in view, biggest first
-            area = np.ptp(kp[..., 0], 1) * np.ptp(kp[..., 1], 1); o = np.argsort(-area)[:2]; kp, sc = kp[o], sc[o]
+        kp, sc = select_people(kp, sc)
         ms = (time.time() - t0) * 1000
         with lock:
             S["frame_wh"] = (frame.shape[1], frame.shape[0])
@@ -237,7 +252,7 @@ def action_loop():
         smooth = p if smooth is None else 0.5 * smooth + 0.5 * p
         k = int(np.argmax(smooth)); conf = float(smooth[k]); name = ACTIONS[k]
         if args.debug: print(f"motion {motion:.3f} | top {name} {conf:.2f} | all-class p {float(p_all[ACT_IDX[k]]):.2f}")
-        low = conf < args.threshold or float(p_all[ACT_IDX[k]]) < 0.15
+        low = conf < args.threshold
         if motion < args.still and low: label = "standing still"   # never hides a confident prediction
         elif low: label = "no clear action"
         else: label = name
