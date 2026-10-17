@@ -1,4 +1,4 @@
-"""SafeSense live demo: phone camera -> RTMPose (17 COCO joints) -> SafeSense-Pose -> browser dashboard.
+"""SafeSense live demo: phone camera -> RTMPose (17 COCO joints) -> SafeSense (original architecture, NTU-120) -> browser dashboard.
 
 Run:  python app.py --source http://<phone-ip>:8080/video      (Android "IP Webcam" app)
       python app.py --source 0                                 (laptop webcam)
@@ -16,7 +16,8 @@ from safesense_pose import SafeSensePose, pack, COCO_EDGES, T_STEPS
 HERE = Path(__file__).resolve().parent
 ap = argparse.ArgumentParser()
 ap.add_argument("--source", default="0", help="IP Webcam URL, webcam index, or video file")
-ap.add_argument("--checkpoint", default=str(HERE / "safesense_pose_ntu120.pt"))
+DEFAULT_CK = next((HERE / f for f in ("safesense_orig_ntu120.pt", "safesense_pose_ntu120.pt") if (HERE / f).exists()), HERE / "safesense_orig_ntu120.pt")
+ap.add_argument("--checkpoint", default=str(DEFAULT_CK), help="model file (default: the original SafeSense, safesense_orig_ntu120.pt)")
 ap.add_argument("--pose", default="lightweight", choices=["lightweight", "balanced", "performance"], help="RTMPose size: lightweight is fastest on CPU")
 ap.add_argument("--window", type=float, default=3.0, help="seconds of motion the model looks at")
 ap.add_argument("--every", type=float, default=0.25, help="seconds between action predictions")
@@ -28,6 +29,8 @@ ap.add_argument("--mock", action="store_true", help="synthetic skeleton instead 
 args = ap.parse_args()
 
 # ---------------------------------------------------------------- model
+if not Path(args.checkpoint).exists():
+    raise SystemExit(f"model file not found: {args.checkpoint}\nCopy safesense_orig_ntu120.pt (Kaggle output of notebook 06) into {HERE}")
 ck = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
 CLASSES = ck["classes"]; ORIG = ck.get("arch") == "safesense_orig"
 if ORIG:   # original SafeSense architecture (06_train_safesense_original_ntu120)
@@ -42,7 +45,7 @@ unknown = [a for a in ACTIONS if a not in CLASSES]
 if unknown: raise SystemExit(f"not NTU-120 class names: {unknown}")
 ACT_IDX = [CLASSES.index(a) for a in ACTIONS]
 ALERTS = {"falling", "staggering"}
-print(f"model: {sum(p.numel() for p in model.parameters()):,} params, cross-subject top-1 {ck['cross_subject']['top1']:.3f}; demo actions: {len(ACTIONS)}")
+print(f"model: {'original SafeSense' if ORIG else 'SafeSense-Pose'} ({Path(args.checkpoint).name}), {sum(p.numel() for p in model.parameters()):,} params, cross-subject top-1 {ck['cross_subject']['top1']:.3f}; demo actions: {len(ACTIONS)}")
 
 # ---------------------------------------------------------------- shared state
 lock = threading.Lock()
@@ -210,7 +213,7 @@ def state():
     with lock:
         d = {k: S[k] for k in ("cam_fps", "pose_fps", "pose_ms", "act_ms", "persons", "label", "conf", "top", "alert", "status", "motion")}
         d["events"] = list(S["events"])
-    d.update(actions=ACTIONS, source="synthetic test skeleton" if args.mock else args.source, model_top1=ck["cross_subject"]["top1"])
+    d.update(actions=ACTIONS, source="synthetic test skeleton" if args.mock else args.source, model_top1=ck["cross_subject"]["top1"], model="SafeSense (original)" if ORIG else "SafeSense-Pose")
     return JSONResponse(d)
 
 @app.get("/stream.mjpg")

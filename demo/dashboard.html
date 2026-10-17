@@ -43,7 +43,7 @@
 <body>
 <header>
   <h1>SafeSense Live: Skeleton-based Action Recognition</h1>
-  <div class="src">Source: <span id="source">-</span> &nbsp;|&nbsp; <span id="status">connecting</span></div>
+  <div class="src">Model: <span id="model">-</span> &nbsp;|&nbsp; Source: <span id="source">-</span> &nbsp;|&nbsp; <span id="status">connecting</span></div>
 </header>
 <main>
   <div class="card video"><img id="video" src="/stream.mjpg" alt="Live camera with detected skeleton"></div>
@@ -78,7 +78,7 @@ const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 async function tick() {
   try {
     const s = await (await fetch("/state", {cache: "no-store"})).json();
-    $("source").textContent = s.source; $("status").textContent = s.status;
+    $("model").textContent = s.model; $("source").textContent = s.source; $("status").textContent = s.status;
     $("label").textContent = cap(s.label);
     $("label").style.color = ALERTS.has(s.label) ? "var(--alert)" : "var(--ink)";
     $("conf").textContent = s.conf > 0 ? `confidence ${(s.conf * 100).toFixed(0)}%` : " ";
