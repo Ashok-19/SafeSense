@@ -16,9 +16,10 @@ ap.add_argument("--fps", type=float, default=10, help="simulated pose rate on th
 ap.add_argument("--n", type=int, default=2000, help="test clips to replay (0 = all)")
 ap.add_argument("--jitter", type=float, default=0.0, help="extra keypoint noise in pixels, to imitate a live pose estimator")
 ap.add_argument("--stgcnpp", action="store_true")
+ap.add_argument("--window", type=float, default=3.0)
 a = ap.parse_args()
 
-sys.argv = ["app.py", "--checkpoint", a.checkpoint, "--actions", "all"] + (["--stgcnpp"] if a.stgcnpp else [])
+sys.argv = ["app.py", "--checkpoint", a.checkpoint, "--actions", "all", "--window", str(a.window)] + (["--stgcnpp"] if a.stgcnpp else [])
 import app, torch                                     # the demo's own code, without starting its threads
 
 data = pickle.load(open(a.pkl, "rb"))
@@ -28,7 +29,8 @@ rng = np.random.default_rng(0)
 if a.n: ids = list(rng.choice(ids, min(a.n, len(ids)), replace=False))
 C = app.CLASSES
 strong = [C.index(x) for x in app.STRONG]
-hit = hit_s = n_s = 0; per = collections.defaultdict(lambda: [0, 0]); t0 = time.time()
+from safesense_pose import pack, sample_frames
+hit_off = 0; hit = hit_s = n_s = 0; per = collections.defaultdict(lambda: [0, 0]); t0 = time.time()
 for k, fid in enumerate(ids):
     x = ann[fid]; kp = np.asarray(x["keypoint"], np.float32); sc = np.asarray(x["keypoint_score"], np.float32)
     if kp.ndim == 3: kp, sc = kp[None], sc[None]
@@ -49,11 +51,14 @@ for k, fid in enumerate(ids):
             else:
                 z = app.model(*inp); z = (z[0] if app.ORIG else z)[0]
         pred = int(z.argmax())
-    y = int(x["label"]); hit += pred == y; per[y][0] += pred == y; per[y][1] += 1
+    y = int(x["label"])
+    if not (app.PYSKL or app.ORIG):   # control: the offline evaluation path on the same clip
+        with torch.no_grad(): hit_off += int(app.model(torch.from_numpy(pack(kp, sc, sample_frames(T)))[None])[0].argmax()) == y
+    hit += pred == y; per[y][0] += pred == y; per[y][1] += 1
     if y in strong:
         n_s += 1; hit_s += (inp is not None) and strong[int(z[strong].argmax())] == y
     if (k + 1) % 200 == 0: print(f"{k + 1}/{len(ids)}  all-120 acc {hit / (k + 1):.3f}  strong-list acc {hit_s / max(n_s, 1):.3f}  {time.time() - t0:.0f}s", flush=True)
 print(f"\nreplay at {a.fps:g} fps, jitter {a.jitter:g}px, {len(ids)} clips: all-120 top-1 {hit / len(ids):.4f} "
-      f"(offline: {app.ck['cross_subject']['top1']:.4f}); default action list ({len(strong)} actions) {hit_s / max(n_s, 1):.4f} on {n_s} clips")
+      f"(offline path on the same clips: {hit_off / len(ids):.4f}); default action list ({len(strong)} actions) {hit_s / max(n_s, 1):.4f} on {n_s} clips")
 worst = sorted((v[0] / v[1], C[c]) for c, v in per.items() if v[1] >= 5 and c in strong)[:8]
 print("weakest actions in the default list:", [(n, round(r, 2)) for r, n in worst])

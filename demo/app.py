@@ -204,19 +204,44 @@ def movement(body):
     return float(max(rng))
 
 
+SAMPLING = __import__("os").environ.get("SAFESENSE_SAMPLING", "interp")
+
+
+def track(items):
+    """Per-frame detections -> [2, n, 17, 2] / [2, n, 17] with each person kept in the same slot across frames
+    (nearest body centre to the previous frame), like NTU's per-person tracks. Sorting by size frame by frame swaps
+    people whenever two are similar in size."""
+    n = len(items); kp = np.zeros((2, n, 17, 2), np.float32); sc = np.zeros((2, n, 17), np.float32)
+    prev = [None, None]
+    for f, (_, k, s) in enumerate(items):
+        k, s = k[:2], s[:2]
+        cen = [(k[p] * s[p, :, None]).sum(0) / max(s[p].sum(), 1e-6) for p in range(len(k))]
+        if all(c is None for c in prev): slots = list(range(len(k)))
+        elif len(k) == 1:
+            d = [np.inf if c is None else np.linalg.norm(cen[0] - c) for c in prev]; slots = [int(np.argmin(d))]
+        else:
+            d = lambda a, b: 1e9 if prev[b] is None else np.linalg.norm(cen[a] - prev[b])
+            slots = [0, 1] if d(0, 0) + d(1, 1) <= d(0, 1) + d(1, 0) else [1, 0]
+        for p, sl in enumerate(slots):
+            kp[sl, f], sc[sl, f] = k[p], s[p]; prev[sl] = cen[p]
+    return kp, sc
+
+
 def window_tensor():
     """Last `window` seconds of poses -> one model input [1,2,48,17,5], sampled evenly in time."""
     with lock: items = list(buf)
     items = [it for it in items if len(it[1])]
     if len(items) < 8 or items[-1][0] - items[0][0] < 1.0: return None, 0.0
     ts = np.array([it[0] for it in items]); n = len(items)
-    kp = np.zeros((2, n, 17, 2), np.float32); sc = np.zeros((2, n, 17), np.float32)
-    for f, (_, k, s) in enumerate(items):
-        kp[:len(k), f], sc[:len(s), f] = k[:2], s[:2]
+    kp, sc = track(items)
     # Interpolate onto an even time grid. The camera and pose rate (often 8 to 15 fps on a laptop CPU) is much lower
     # than NTU's 30 fps, and picking the nearest frame repeated frames, which zeroes the motion between them.
     grid = np.linspace(ts[0], ts[-1], T_STEPS)
-    kpg, scg = resample(kp, sc, ts, grid), resample(sc, sc, ts, grid, score=True)
+    if SAMPLING == "nearest":   # training's own sampling (segment centres, nearest frame); right when pose runs near 30 fps
+        g = np.clip(np.searchsorted(ts, ts[0] + (np.arange(T_STEPS) + 0.5) / T_STEPS * (ts[-1] - ts[0])), 0, n - 1)
+        kpg, scg = kp[:, g], sc[:, g]
+    else:
+        kpg, scg = resample(kp, sc, ts, grid), resample(sc, sc, ts, grid, score=True)
     idx = np.arange(T_STEPS)
     x = pack(kpg, scg, idx)
     motion = movement(x[0])
