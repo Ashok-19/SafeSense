@@ -1,4 +1,4 @@
-# SafeSense live demo (original SafeSense model)
+# SafeSense live demo
 
 Android phone camera -> Wi-Fi -> laptop: RTMPose finds 17 body joints -> original SafeSense (trained on NTU-120) labels the last 3 seconds -> dashboard in the browser.
 
@@ -60,7 +60,18 @@ The dashboard shows the live video with the skeleton, the current action with it
 | `--actions "falling,sitting down,standing up,squat down"` | limit the dashboard to the actions you will perform |
 | `--checkpoint safesense_pose_ntu120.pt` | use the 682k SafeSense-Pose model instead |
 
-## 6. If something goes wrong
+## 6. Pretrained PYSKL ST-GCN++ (strongest model)
+
+ST-GCN++ from PYSKL (Apache-2.0) with its official NTU-120 cross-subject weights for 2D HRNet skeletons: 84.4% (joint), 84.8% (bone), 86.4% (joint + bone), about 1.4M parameters. Same 17 COCO joints as the rest of the demo, no training needed.
+
+```bash
+bash get_stgcnpp.sh                       # once: downloads stgcnpp_j.pth and stgcnpp_b.pth
+bash run.sh http://192.168.1.23:8080 --stgcnpp
+```
+
+It looks at the last 3.3 seconds at the camera's real speed, the way it was trained. Joint + bone runs two networks, so each prediction is slower than SafeSense; if the laptop struggles, delete `stgcnpp_b.pth` to run the joint stream only.
+
+## 7. If something goes wrong
 
 - **"model file not found"**: `safesense_orig_ntu120.pt` is not next to `app.py`.
 - **Camera FPS stays 0**: the laptop cannot reach the phone. Open the phone URL in the browser; if it does not load, use the phone hotspot.

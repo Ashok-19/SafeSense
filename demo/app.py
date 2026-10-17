@@ -25,32 +25,52 @@ ap.add_argument("--threshold", type=float, default=0.45, help="minimum smoothed 
 ap.add_argument("--still", type=float, default=0.015, help="motion level below which the person counts as still")
 ap.add_argument("--actions", default="", help="comma-separated demo actions (default: the list saved in the checkpoint)")
 ap.add_argument("--port", type=int, default=8000)
+ap.add_argument("--stgcnpp", action="store_true", help="use the pretrained PYSKL ST-GCN++ (stgcnpp_j.pth / stgcnpp_b.pth next to app.py)")
 ap.add_argument("--mock", action="store_true", help="synthetic skeleton instead of camera and pose model")
 args = ap.parse_args()
 
 # ---------------------------------------------------------------- model
-if not Path(args.checkpoint).exists():
+DEMO_DEFAULT = ["drink water", "sitting down", "standing up", "clapping", "hand waving", "jump up", "make a phone call/answer phone",
+                "falling", "touch head (headache)", "touch chest (stomachache/heart pain)", "staggering", "squat down",
+                "hands up (both hands)", "arm circles", "running on the spot", "kicking something", "pickup", "cross arms"]
+PYSKL = args.stgcnpp
+if PYSKL:   # pretrained PYSKL ST-GCN++ on NTU-120 xsub (HRNet 2D), joint and/or bone stream
+    from pyskl_stgcnpp import load_pyskl, pyskl_input, CLIP_LEN, FPS
+    from safesense_pose import NTU120_CLASSES
+    streams = [(f, HERE / f"stgcnpp_{f}.pth") for f in ("j", "b") if (HERE / f"stgcnpp_{f}.pth").exists()]
+    if not streams: raise SystemExit(f"no ST-GCN++ weights in {HERE}: run  bash get_stgcnpp.sh  first")
+    PY_MODELS = [(f, load_pyskl(pth)) for f, pth in streams]
+    args.window = max(args.window, CLIP_LEN / FPS + 0.05)
+    ORIG = False; CLASSES = list(NTU120_CLASSES)
+    top1 = 0.864 if len(PY_MODELS) == 2 else {"j": 0.844, "b": 0.848}[PY_MODELS[0][0]]
+    ck = dict(cross_subject=dict(top1=top1), demo_actions=DEMO_DEFAULT)
+    model = PY_MODELS[0][1]
+    MODEL_NAME = "PYSKL ST-GCN++ (" + " + ".join({"j": "joint", "b": "bone"}[f] for f, _ in PY_MODELS) + ")"
+elif not Path(args.checkpoint).exists():
     raise SystemExit(f"model file not found: {args.checkpoint}\nCopy safesense_orig_ntu120.pt (Kaggle output of notebook 06) into {HERE}")
-ck = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
-CLASSES = ck["classes"]; ORIG = ck.get("arch") == "safesense_orig"
-if ORIG:   # original SafeSense architecture (06_train_safesense_original_ntu120)
+else:
+    ck = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
+    CLASSES = ck["classes"]; ORIG = ck.get("arch") == "safesense_orig"
+    MODEL_NAME = "SafeSense (original)" if ORIG else "SafeSense-Pose"
+if PYSKL: pass
+elif ORIG:   # original SafeSense architecture (06_train_safesense_original_ntu120)
     from safesense_orig import SafeSenseCOCO, body_window
     model = SafeSenseCOCO(ck["num_classes"])
 else:      # SafeSense-Pose (04 / 05 notebooks)
     model = SafeSensePose(ck["num_classes"], widths=tuple(ck.get("widths", (64, 64, 64, 128, 128, 128))))
-model.load_state_dict(ck["model"]); model.eval()
-torch.set_num_threads(2)
+if not PYSKL: model.load_state_dict(ck["model"]); model.eval()
+torch.set_num_threads(4 if PYSKL else 2)
 ACTIONS = [a.strip() for a in args.actions.split(",") if a.strip()] or list(ck["demo_actions"])
 unknown = [a for a in ACTIONS if a not in CLASSES]
 if unknown: raise SystemExit(f"not NTU-120 class names: {unknown}")
 ACT_IDX = [CLASSES.index(a) for a in ACTIONS]
 ALERTS = {"falling", "staggering"}
-print(f"model: {'original SafeSense' if ORIG else 'SafeSense-Pose'} ({Path(args.checkpoint).name}), {sum(p.numel() for p in model.parameters()):,} params, cross-subject top-1 {ck['cross_subject']['top1']:.3f}; demo actions: {len(ACTIONS)}")
+print(f"model: {MODEL_NAME}, {sum(p.numel() for p in model.parameters()):,} params, cross-subject top-1 {ck['cross_subject']['top1']:.3f}; demo actions: {len(ACTIONS)}")
 
 # ---------------------------------------------------------------- shared state
 lock = threading.Lock()
 S = dict(frame=None, frame_t=0.0, cam_fps=0.0, pose_fps=0.0, pose_ms=0.0, act_ms=0.0, persons=0, label="starting", conf=0.0,
-         top=[], alert=None, alert_t=0.0, events=collections.deque(maxlen=20), status="starting", jpeg=None, motion=0.0)
+         frame_wh=(640, 480), top=[], alert=None, alert_t=0.0, events=collections.deque(maxlen=20), status="starting", jpeg=None, motion=0.0)
 buf = collections.deque()  # (t, kp [P,17,2], score [P,17])
 
 
@@ -120,6 +140,7 @@ def pose_loop():
             area = np.ptp(kp[..., 0], 1) * np.ptp(kp[..., 1], 1); o = np.argsort(-area)[:2]; kp, sc = kp[o], sc[o]
         ms = (time.time() - t0) * 1000
         with lock:
+            S["frame_wh"] = (frame.shape[1], frame.shape[0])
             buf.append((ft, kp, sc))
             while buf and buf[0][0] < ft - args.window: buf.popleft()
             S["persons"], S["pose_ms"] = len(kp), ms
@@ -160,6 +181,11 @@ def window_tensor():
     idx = np.clip(np.searchsorted(ts, grid), 0, n - 1)
     x = pack(kp, sc, idx)
     motion = float(np.abs(x[0, :, :, 3:5]).mean())   # mean joint speed of the main person, in torso lengths per step
+    if PYSKL:   # PYSKL clips are real-time 30 fps: resample the last 100/30 s onto a 30 fps grid
+        n30 = int(min(CLIP_LEN, max(8, round((ts[-1] - ts[0]) * FPS))))
+        g30 = np.clip(np.searchsorted(ts, np.linspace(ts[-1] - (n30 - 1) / FPS, ts[-1], n30)), 0, n - 1)
+        with lock: wh = S["frame_wh"]
+        return tuple(pyskl_input(kp[:, g30], sc[:, g30], wh, f) for f, _ in PY_MODELS), motion
     if ORIG:
         raw, mk = body_window(kp, sc, idx)
         return (torch.from_numpy(raw)[None], torch.from_numpy(mk)[None]), motion
@@ -176,8 +202,11 @@ def action_loop():
             with lock: S.update(label="no person in view" if not recent else "watching...", conf=0.0, top=[], motion=0.0)
             smooth = None; continue
         with torch.no_grad():
-            z = model(*x)
-            z = (z[0] if ORIG else z)[0]
+            if PYSKL:   # average the streams' probabilities, as PYSKL's joint + bone ensemble does
+                z = torch.log(torch.stack([torch.softmax(m(xi)[0], 0) for (_, m), xi in zip(PY_MODELS, x)]).mean(0) + 1e-8)
+            else:
+                z = model(*x)
+                z = (z[0] if ORIG else z)[0]
         p_all = torch.softmax(z, 0)                    # over all 120 NTU actions
         p = torch.softmax(z[ACT_IDX], 0).numpy()        # restricted to the demo actions
         smooth = p if smooth is None else 0.5 * smooth + 0.5 * p
@@ -213,7 +242,7 @@ def state():
     with lock:
         d = {k: S[k] for k in ("cam_fps", "pose_fps", "pose_ms", "act_ms", "persons", "label", "conf", "top", "alert", "status", "motion")}
         d["events"] = list(S["events"])
-    d.update(actions=ACTIONS, source="synthetic test skeleton" if args.mock else args.source, model_top1=ck["cross_subject"]["top1"], model="SafeSense (original)" if ORIG else "SafeSense-Pose")
+    d.update(actions=ACTIONS, source="synthetic test skeleton" if args.mock else args.source, model_top1=ck["cross_subject"]["top1"], model=MODEL_NAME)
     return JSONResponse(d)
 
 @app.get("/stream.mjpg")
