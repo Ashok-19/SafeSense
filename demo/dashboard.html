@@ -30,7 +30,7 @@
   #events li { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); }
   #events li.warn { color:var(--alert); font-weight:bold; }
   #events .time { color:var(--muted); font-variant-numeric:tabular-nums; margin-right:10px; }
-  .stats { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; padding:0 22px 20px; }
+  .stats { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; padding:0 22px 20px; }
   .stat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
   .stat .k { font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); }
   .stat .v { font-size:20px; font-weight:bold; margin-top:3px; font-variant-numeric:tabular-nums; }
@@ -70,6 +70,7 @@
   <div class="stat"><div class="k">Pose time</div><div class="v" id="posems">-</div></div>
   <div class="stat"><div class="k">Action model time</div><div class="v" id="actms">-</div></div>
   <div class="stat"><div class="k">People in view</div><div class="v" id="persons">-</div></div>
+  <div class="stat"><div class="k">Movement</div><div class="v" id="motion">-</div></div>
 </div>
 <script>
 const $ = id => document.getElementById(id);
@@ -91,7 +92,7 @@ async function tick() {
     $("posefps").textContent = s.pose_fps ? s.pose_fps.toFixed(1) : "-";
     $("posems").textContent = s.pose_ms ? s.pose_ms.toFixed(0) + " ms" : "-";
     $("actms").textContent = s.act_ms ? s.act_ms.toFixed(1) + " ms" : "-";
-    $("persons").textContent = s.persons;
+    $("persons").textContent = s.persons; $("motion").textContent = (s.motion ?? 0).toFixed(2);
   } catch (e) { $("status").textContent = "dashboard lost connection to the server"; }
   setTimeout(tick, 250);
 }

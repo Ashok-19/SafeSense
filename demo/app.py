@@ -22,7 +22,8 @@ ap.add_argument("--pose", default="lightweight", choices=["lightweight", "balanc
 ap.add_argument("--window", type=float, default=3.0, help="seconds of motion the model looks at")
 ap.add_argument("--every", type=float, default=0.25, help="seconds between action predictions")
 ap.add_argument("--threshold", type=float, default=0.45, help="minimum smoothed confidence to show an action")
-ap.add_argument("--still", type=float, default=0.015, help="motion level below which the person counts as still")
+ap.add_argument("--still", type=float, default=0.18, help="movement range (torso lengths) below which the person counts as still; 0 turns it off")
+ap.add_argument("--debug", action="store_true", help="print motion and the top prediction for every window")
 ap.add_argument("--actions", default="", help="comma-separated demo actions (default: the list saved in the checkpoint)")
 ap.add_argument("--port", type=int, default=8000)
 ap.add_argument("--stgcnpp", action="store_true", help="use the pretrained PYSKL ST-GCN++ (stgcnpp_j.pth / stgcnpp_b.pth next to app.py)")
@@ -168,6 +169,26 @@ def annotate(frame, kp, sc):
 
 
 # ---------------------------------------------------------------- action recognition
+def resample(a, sc, ts, grid, score=False):
+    """Linear interpolation of a [M, n, ...] array onto time points `grid`; a joint missing at either end is not blended."""
+    j = np.clip(np.searchsorted(ts, grid), 1, len(ts) - 1); i = j - 1
+    w = np.clip((grid - ts[i]) / np.maximum(ts[j] - ts[i], 1e-6), 0, 1)
+    if score: return np.where(np.minimum(sc[:, i], sc[:, j]) > 0, (1 - w)[None, :, None] * sc[:, i] + w[None, :, None] * sc[:, j], 0).astype(np.float32)
+    wb = w.reshape((1, -1) + (1,) * (a.ndim - 2))
+    both = (np.minimum(sc[:, i], sc[:, j]) > 0)[..., None]
+    near = np.where((w < 0.5).reshape((1, -1) + (1,) * (a.ndim - 2)), a[:, i], a[:, j])
+    return np.where(both, (1 - wb) * a[:, i] + wb * a[:, j], near).astype(np.float32)
+
+
+def movement(body):
+    """How far the main person's limbs travel in the window: largest per-joint range (5th to 95th percentile, so single
+    jittery detections do not count) of the normalised x/y, in torso lengths. About 0.1 standing still, 0.3+ when moving."""
+    ok = body[..., 2] > 0.3
+    rng = [np.ptp(np.percentile(body[ok[:, v], v, :2], [5, 95], axis=0), 0).max() if ok[:, v].sum() > 3 else 0.0
+           for v in range(body.shape[1])]
+    return float(max(rng))
+
+
 def window_tensor():
     """Last `window` seconds of poses -> one model input [1,2,48,17,5], sampled evenly in time."""
     with lock: items = list(buf)
@@ -177,17 +198,21 @@ def window_tensor():
     kp = np.zeros((2, n, 17, 2), np.float32); sc = np.zeros((2, n, 17), np.float32)
     for f, (_, k, s) in enumerate(items):
         kp[:len(k), f], sc[:len(s), f] = k[:2], s[:2]
+    # Interpolate onto an even time grid. The camera and pose rate (often 8 to 15 fps on a laptop CPU) is much lower
+    # than NTU's 30 fps, and picking the nearest frame repeated frames, which zeroes the motion between them.
     grid = np.linspace(ts[0], ts[-1], T_STEPS)
-    idx = np.clip(np.searchsorted(ts, grid), 0, n - 1)
-    x = pack(kp, sc, idx)
-    motion = float(np.abs(x[0, :, :, 3:5]).mean())   # mean joint speed of the main person, in torso lengths per step
+    kpg, scg = resample(kp, sc, ts, grid), resample(sc, sc, ts, grid, score=True)
+    idx = np.arange(T_STEPS)
+    x = pack(kpg, scg, idx)
+    motion = movement(x[0])
     if PYSKL:   # PYSKL clips are real-time 30 fps: resample the last 100/30 s onto a 30 fps grid
         n30 = int(min(CLIP_LEN, max(8, round((ts[-1] - ts[0]) * FPS))))
-        g30 = np.clip(np.searchsorted(ts, np.linspace(ts[-1] - (n30 - 1) / FPS, ts[-1], n30)), 0, n - 1)
+        g30 = np.linspace(ts[-1] - (n30 - 1) / FPS, ts[-1], n30)
+        k30, s30 = resample(kp, sc, ts, g30), resample(sc, sc, ts, g30, score=True)
         with lock: wh = S["frame_wh"]
-        return tuple(pyskl_input(kp[:, g30], sc[:, g30], wh, f) for f, _ in PY_MODELS), motion
+        return tuple(pyskl_input(k30, s30, wh, f) for f, _ in PY_MODELS), motion
     if ORIG:
-        raw, mk = body_window(kp, sc, idx)
+        raw, mk = body_window(kpg, scg, idx)
         return (torch.from_numpy(raw)[None], torch.from_numpy(mk)[None]), motion
     return (torch.from_numpy(x)[None],), motion
 
@@ -211,8 +236,10 @@ def action_loop():
         p = torch.softmax(z[ACT_IDX], 0).numpy()        # restricted to the demo actions
         smooth = p if smooth is None else 0.5 * smooth + 0.5 * p
         k = int(np.argmax(smooth)); conf = float(smooth[k]); name = ACTIONS[k]
-        if motion < args.still and name not in ("cross arms", "hands up (both hands)"): label = "standing still"
-        elif conf < args.threshold or float(p_all[ACT_IDX[k]]) < 0.15: label = "no clear action"
+        if args.debug: print(f"motion {motion:.3f} | top {name} {conf:.2f} | all-class p {float(p_all[ACT_IDX[k]]):.2f}")
+        low = conf < args.threshold or float(p_all[ACT_IDX[k]]) < 0.15
+        if motion < args.still and low: label = "standing still"   # never hides a confident prediction
+        elif low: label = "no clear action"
         else: label = name
         top = sorted(zip(ACTIONS, smooth.tolist()), key=lambda t: -t[1])[:5]
         now = time.time()
