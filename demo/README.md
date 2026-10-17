@@ -46,7 +46,7 @@ The dashboard shows the live video with the skeleton, the current action with it
 - Phone in landscape, on a stand or leaning on something at chest height, 2.5 to 4 m away, whole body in frame from head to feet.
 - Front or slightly side-on view, good light, one person in front of the camera.
 - Hold each action for 2 to 3 seconds; the label updates 4 times a second and settles in about a second.
-- Strongest actions (above 95% on NTU test people): sitting down, standing up, jump up, squat down, falling, pickup, cross arms, arm circles, hands up, kicking. Also good: running on the spot, staggering, hand waving, clapping, drink water, phone call, touch head, touch chest.
+- Strongest actions (above 95% on NTU test people): sitting down, standing up, jump up, squat down, falling, pickup, cross arms, arm circles, hands up. Also good: kicking, running on the spot, staggering, hand waving, clapping, drink water, phone call, touch head, touch chest.
 - For the fall, use a mat and fall sideways slowly; the alert stays on screen for 6 seconds and can be cleared with the Clear button.
 
 ## 5. Options and backup
