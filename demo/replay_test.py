@@ -38,7 +38,7 @@ for k, fid in enumerate(ids):
     T = kp.shape[1]; dur = T / 30.0
     app.buf.clear(); app.S["frame_wh"] = (w, h)
     for t in np.arange(0, dur, 1 / a.fps):              # the pose estimator only sees some frames
-        f = min(int(t * 30), T - 1)
+        f = min(int(round(t * 30)), T - 1)   # round: int(k/30*30) can land on k-1, repeating a frame
         kk = kp[:, f] + (rng.normal(0, a.jitter, kp[:, f].shape) if a.jitter else 0)
         p_kp, p_sc = app.select_people(kk, sc[:, f])
         app.buf.append((t, p_kp, p_sc))

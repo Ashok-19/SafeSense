@@ -215,6 +215,7 @@ def track(items):
     prev = [None, None]
     for f, (_, k, s) in enumerate(items):
         k, s = k[:2], s[:2]
+        if not len(k): continue
         cen = [(k[p] * s[p, :, None]).sum(0) / max(s[p].sum(), 1e-6) for p in range(len(k))]
         if all(c is None for c in prev): slots = list(range(len(k)))
         elif len(k) == 1:
@@ -236,11 +237,15 @@ def window_tensor():
     kp, sc = track(items)
     # Interpolate onto an even time grid. The camera and pose rate (often 8 to 15 fps on a laptop CPU) is much lower
     # than NTU's 30 fps, and picking the nearest frame repeated frames, which zeroes the motion between them.
-    grid = np.linspace(ts[0], ts[-1], T_STEPS)
-    if SAMPLING == "nearest":   # training's own sampling (segment centres, nearest frame); right when pose runs near 30 fps
-        g = np.clip(np.searchsorted(ts, ts[0] + (np.arange(T_STEPS) + 0.5) / T_STEPS * (ts[-1] - ts[0])), 0, n - 1)
+    # Training takes the frame at the centre of each of 48 equal segments of the clip (sample_frames). Do the same on
+    # the time axis: each pose sample stands for one frame period dt, so the window spans n * dt.
+    dt = float(np.median(np.diff(ts))); span = ts[-1] - ts[0] + dt
+    centres = ts[0] + (np.arange(T_STEPS) + 0.5) / T_STEPS * span
+    if SAMPLING == "nearest":   # exactly training's sampling; right when pose runs near 30 fps
+        g = np.clip(np.searchsorted(ts, centres + 1e-6, "right") - 1, 0, n - 1)
         kpg, scg = kp[:, g], sc[:, g]
-    else:
+    else:   # low pose rates: picking frames would repeat them and zero the motion between, so interpolate in time
+        grid = np.clip(centres - dt / 2, ts[0], ts[-1])
         kpg, scg = resample(kp, sc, ts, grid), resample(sc, sc, ts, grid, score=True)
     idx = np.arange(T_STEPS)
     x = pack(kpg, scg, idx)
