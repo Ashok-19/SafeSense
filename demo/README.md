@@ -2,6 +2,26 @@
 
 Android phone camera -> Wi-Fi -> laptop: RTMPose finds 17 body joints -> original SafeSense (trained on NTU-120) labels the last 3 seconds -> dashboard in the browser.
 
+## 0. The dashboard (start here)
+
+```bash
+cd ~/Desktop/final-year-project/live-demo && bash start.sh --install
+```
+
+This starts the dashboard and opens http://localhost:8000 in the browser. `--install` also adds **SafeSense Demo** to the
+applications menu, so from then on you can start it without a terminal. Everything else is done in the dashboard:
+
+- **Settings**: type the address IP Webcam shows on the phone and press **Test**. It tells you in plain words whether
+  the phone is reachable, and what to change if not. Choose the model and pose model size, then **Save and apply**.
+  Settings are kept in settings.json for next time.
+- **Live**: camera with skeleton, current action, recent actions, plus what the model actually sees (your normalised
+  skeleton) and its top 5 over all 120 actions.
+- **Record and check**: tick actions and press **Record checked actions**. A voice and a big countdown tell you when to
+  start (GO) and stop, so you can stand back from the laptop. Each recording is scored by the model and compared with the
+  NTU people doing the same action, with hints such as "you moved much less than the NTU people do".
+- **Tests**: **Prepare NTU reference** once (needs data/ntu120_hrnet.pkl), which the Record tab uses for its NTU
+  comparison. Also the replay test and the step-by-step pipeline check, with their output shown on the page.
+
 ## 1. One-time setup on the laptop
 
 ```bash

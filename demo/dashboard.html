@@ -5,98 +5,422 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SafeSense Live</title>
 <style>
-  :root { --bg:#f4f6f8; --card:#ffffff; --ink:#1b2430; --muted:#5f6b7a; --line:#dde3ea; --accent:#156082; --accent-soft:#e3eff5; --alert:#c62828; --alert-soft:#fdecea; --ok:#2e7d32; }
+  :root { --bg:#f4f6f8; --card:#ffffff; --ink:#1b2430; --muted:#5f6b7a; --line:#dde3ea; --accent:#156082; --accent-soft:#e3eff5;
+          --alert:#c62828; --alert-soft:#fdecea; --ok:#2e7d32; --ok-soft:#e8f5e9; --warn:#b26a00; --warn-soft:#fff4e0; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font-family:Arial, Helvetica, sans-serif; }
-  header { display:flex; align-items:center; justify-content:space-between; padding:14px 22px; background:var(--card); border-bottom:3px solid var(--accent); }
-  header h1 { margin:0; font-size:22px; color:var(--accent); letter-spacing:.3px; }
-  header .src { font-size:13px; color:var(--muted); }
-  main { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr); gap:18px; padding:18px 22px; }
+  header { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; padding:12px 22px; background:var(--card); border-bottom:3px solid var(--accent); }
+  header h1 { margin:0; font-size:21px; color:var(--accent); letter-spacing:.3px; }
+  .pills { display:flex; flex-wrap:wrap; gap:8px; font-size:12px; }
+  .pill { background:var(--accent-soft); color:var(--accent); border-radius:12px; padding:4px 10px; max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pill.bad { background:var(--alert-soft); color:var(--alert); } .pill.good { background:var(--ok-soft); color:var(--ok); } .pill.busy { background:var(--warn-soft); color:var(--warn); }
+  nav { display:flex; gap:4px; padding:0 22px; background:var(--card); border-bottom:1px solid var(--line); }
+  nav button { border:none; border-bottom:3px solid transparent; background:none; padding:11px 16px; font-size:14px; color:var(--muted); cursor:pointer; border-radius:0; }
+  nav button.on { color:var(--accent); border-bottom-color:var(--accent); font-weight:bold; }
+  section { display:none; padding:18px 22px; } section.on { display:block; }
+  .grid2 { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr); gap:18px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:18px; margin-top:18px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
-  .video { padding:0; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111; min-height:360px; }
+  .video { padding:0; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111; min-height:300px; position:relative; }
   .video img { width:100%; height:auto; display:block; }
   .side { display:flex; flex-direction:column; gap:14px; }
-  .label-title { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px; }
+  h3, .label-title { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:0 0 8px; font-weight:normal; }
   #label { font-size:34px; font-weight:bold; line-height:1.15; }
   #conf { margin-top:6px; color:var(--muted); font-size:14px; }
-  .bar { display:grid; grid-template-columns:150px 1fr 46px; gap:8px; align-items:center; font-size:13px; margin:7px 0; }
+  .bar { display:grid; grid-template-columns:minmax(0,160px) 1fr 46px; gap:8px; align-items:center; font-size:13px; margin:7px 0; }
   .bar .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .track { height:10px; background:var(--accent-soft); border-radius:5px; overflow:hidden; }
   .fill { height:100%; background:var(--accent); width:0; transition:width .2s; }
-  .bar .val { text-align:right; color:var(--muted); }
+  .bar .val { text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
   #alert { display:none; background:var(--alert-soft); border:2px solid var(--alert); color:var(--alert); font-weight:bold; font-size:22px; text-align:center; padding:14px; border-radius:10px; animation:pulse 1s infinite; }
   @keyframes pulse { 50% { opacity:.65; } }
-  #events { list-style:none; margin:0; padding:0; max-height:220px; overflow:auto; font-size:14px; }
-  #events li { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); }
-  #events li.warn { color:var(--alert); font-weight:bold; }
-  #events .time { color:var(--muted); font-variant-numeric:tabular-nums; margin-right:10px; }
-  .stats { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; padding:0 22px 20px; }
-  .stat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  ul.list { list-style:none; margin:0; padding:0; max-height:220px; overflow:auto; font-size:14px; }
+  ul.list li { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); }
+  ul.list li.warn { color:var(--alert); font-weight:bold; }
+  .time { color:var(--muted); font-variant-numeric:tabular-nums; margin-right:10px; }
+  .stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+  .stat { background:var(--bg); border-radius:8px; padding:8px 10px; }
   .stat .k { font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); }
-  .stat .v { font-size:20px; font-weight:bold; margin-top:3px; font-variant-numeric:tabular-nums; }
-  button { border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:6px; padding:4px 10px; cursor:pointer; font-size:12px; }
-  .row { display:flex; justify-content:space-between; align-items:center; }
-  #status { font-size:13px; color:var(--muted); }
-  @media (max-width: 900px) { main { grid-template-columns:1fr; } .stats { grid-template-columns:repeat(2, 1fr); } }
+  .stat .v { font-size:19px; font-weight:bold; margin-top:3px; font-variant-numeric:tabular-nums; }
+  button, .btn { border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:6px; padding:7px 14px; cursor:pointer; font-size:13px; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.danger { color:var(--alert); border-color:var(--alert); }
+  button:disabled { opacity:.5; cursor:default; }
+  button.small { padding:3px 9px; font-size:12px; color:var(--muted); }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .row.between { justify-content:space-between; }
+  label { font-size:13px; color:var(--muted); }
+  input[type=text], input[type=number], select, textarea { font:inherit; font-size:14px; padding:7px 9px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink); }
+  input[type=number] { width:90px; }
+  .field { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+  .help { font-size:12px; color:var(--muted); }
+  .msg { font-size:13px; padding:9px 11px; border-radius:6px; margin-top:8px; display:none; }
+  .msg.good { display:block; background:var(--ok-soft); color:var(--ok); } .msg.bad { display:block; background:var(--alert-soft); color:var(--alert); } .msg.info { display:block; background:var(--accent-soft); color:var(--accent); }
+  canvas.skel { width:100%; aspect-ratio:1/1; background:#fafbfc; border:1px solid var(--line); border-radius:8px; display:block; }
+  .acts { max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:13px; }
+  .acts label { display:flex; gap:7px; align-items:center; color:var(--ink); padding:3px 0; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-weight:normal; color:var(--muted); font-size:12px; border-bottom:1px solid var(--line); padding:6px; }
+  td { border-bottom:1px solid var(--line); padding:7px 6px; vertical-align:top; }
+  tr.sel td { background:var(--accent-soft); } tbody tr { cursor:pointer; }
+  .tag { display:inline-block; border-radius:10px; padding:2px 8px; font-size:12px; }
+  .tag.recognised { background:var(--ok-soft); color:var(--ok); } .tag.sometimes { background:var(--warn-soft); color:var(--warn); }
+  .tag.missed, .tag.no { background:var(--alert-soft); color:var(--alert); }
+  .hints { margin:6px 0 0; padding-left:18px; color:var(--warn); font-size:12px; }
+  pre.log { background:#10161d; color:#d6e2ee; border-radius:8px; padding:12px; height:420px; overflow:auto; font-size:12px; white-space:pre-wrap; margin:0; }
+  #overlay { display:none; position:fixed; inset:0; background:rgba(16,22,29,.55); z-index:10; align-items:center; justify-content:center; flex-direction:column; color:#fff; text-align:center; pointer-events:none; }
+  #overlay .act { font-size:min(7vw, 64px); font-weight:bold; text-shadow:0 2px 8px #000; }
+  #overlay .big { font-size:min(30vw, 260px); font-weight:bold; line-height:1; text-shadow:0 4px 16px #000; }
+  #overlay .sub { font-size:min(4vw, 30px); text-shadow:0 2px 8px #000; }
+  #overlay.go .big { color:#7CFC9A; } #overlay.stop .big { color:#ff8a80; } #overlay.count .big { color:#ffd166; }
+  @media (max-width: 960px) { .grid2, .grid3 { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>SafeSense Live: Skeleton-based Action Recognition</h1>
-  <div class="src">Model: <span id="model">-</span> &nbsp;|&nbsp; Source: <span id="source">-</span> &nbsp;|&nbsp; <span id="status">connecting</span></div>
+  <h1>SafeSense Live</h1>
+  <div class="pills">
+    <span class="pill" id="pModel">model</span><span class="pill" id="pSource">camera</span>
+    <span class="pill" id="pStatus">connecting</span><span class="pill busy" id="pBusy" style="display:none"></span>
+  </div>
 </header>
-<main>
-  <div class="card video"><img id="video" src="/stream.mjpg" alt="Live camera with detected skeleton"></div>
-  <div class="side">
-    <div id="alert">ALERT: <span id="alertText"></span> detected</div>
-    <div class="card">
-      <div class="label-title">Current action</div>
-      <div id="label">starting</div>
-      <div id="conf">&nbsp;</div>
-    </div>
-    <div class="card">
-      <div class="label-title">Confidence (top 5 demo actions)</div>
-      <div id="bars"></div>
-    </div>
-    <div class="card">
-      <div class="row"><div class="label-title">Recent actions</div><button onclick="fetch('/clear',{method:'POST'})">Clear</button></div>
-      <ul id="events"></ul>
+<nav>
+  <button data-tab="live" class="on">Live</button><button data-tab="record">Record and check</button>
+  <button data-tab="tests">Tests</button><button data-tab="settings">Settings</button>
+</nav>
+
+<!-- ------------------------------------------------------------ Live -->
+<section id="live" class="on">
+  <div class="grid2">
+    <div class="card video"><img class="cam" src="/stream.mjpg" alt="Live camera with detected skeleton"></div>
+    <div class="side">
+      <div id="alert">ALERT: <span id="alertText"></span> detected</div>
+      <div class="card"><div class="label-title">Current action</div><div id="label">starting</div><div id="conf">&nbsp;</div></div>
+      <div class="card"><div class="label-title">Confidence (top 5 of the <span id="nActs">-</span> demo actions)</div><div id="bars"></div></div>
+      <div class="card"><div class="row between"><div class="label-title">Recent actions</div><button class="small" onclick="post('/clear')">Clear</button></div><ul class="list" id="events"></ul></div>
     </div>
   </div>
-</main>
-<div class="stats">
-  <div class="stat"><div class="k">Camera FPS</div><div class="v" id="camfps">-</div></div>
-  <div class="stat"><div class="k">Pose FPS</div><div class="v" id="posefps">-</div></div>
-  <div class="stat"><div class="k">Pose time</div><div class="v" id="posems">-</div></div>
-  <div class="stat"><div class="k">Action model time</div><div class="v" id="actms">-</div></div>
-  <div class="stat"><div class="k">People in view</div><div class="v" id="persons">-</div></div>
-  <div class="stat"><div class="k">Movement</div><div class="v" id="motion">-</div></div>
-</div>
+  <div class="grid3">
+    <div class="card"><h3>What the model sees (last window, slowed to 3 s)</h3><canvas class="skel" id="cvLive" width="360" height="360"></canvas>
+      <div class="help">Your main body after the same normalising as in training: centred on the hips, scaled by the torso.</div></div>
+    <div class="card"><h3>Top 5 of all 120 NTU actions</h3><div id="barsAll"></div>
+      <div class="help">Unrestricted model output. If the right action shows here but not on the left, it is outside the demo list.</div></div>
+    <div class="card"><h3>Pipeline</h3>
+      <div class="stats">
+        <div class="stat"><div class="k">Camera FPS</div><div class="v" id="camfps">-</div></div>
+        <div class="stat"><div class="k">Pose FPS</div><div class="v" id="posefps">-</div></div>
+        <div class="stat"><div class="k">Pose time</div><div class="v" id="posems">-</div></div>
+        <div class="stat"><div class="k">Model time</div><div class="v" id="actms">-</div></div>
+        <div class="stat"><div class="k">People</div><div class="v" id="persons">-</div></div>
+        <div class="stat"><div class="k">Movement</div><div class="v" id="motion">-</div></div>
+      </div>
+      <div class="help" style="margin-top:10px">Movement is how far your limbs travel in the window, in torso lengths: about 0.1 standing still, 0.3 or more when moving.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------ Record and check -->
+<section id="record">
+  <div class="grid2">
+    <div class="card video"><img class="cam" alt="Live camera"></div>
+    <div class="card">
+      <h3>Record yourself doing actions</h3>
+      <div class="help" style="margin-bottom:10px">Each action is recorded through the live pipeline, then scored by the model and compared with how the NTU people do it. A voice and a big countdown tell you when to start and stop, so you can stand back from the laptop.</div>
+      <div class="row between"><label>Actions</label><span><button class="small" onclick="pickActs('ten')">Suggested 10</button> <button class="small" onclick="pickActs('none')">None</button> <label><input type="checkbox" id="showAll" onchange="renderActs()"> show all 120</label></span></div>
+      <div class="acts" id="acts"></div>
+      <div class="row" style="margin-top:12px">
+        <label>Countdown <input type="number" id="cd" value="4" min="1" max="20"> s</label>
+        <label>Record for <input type="number" id="secs" value="6" min="3" max="20"> s</label>
+        <label><input type="checkbox" id="voice" checked> voice</label>
+      </div>
+      <div class="help">The first action gets 6 extra seconds so you can walk into place.</div>
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="btnSeq" onclick="startSeq()">Record checked actions</button>
+        <button class="danger" id="btnStop" onclick="stopSeq()" disabled>Stop</button>
+        <span id="seqInfo" class="help"></span>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <div class="row between"><h3>Results</h3><span><span class="help" id="refInfo"></span> <button class="small" onclick="rescore()">Re-score with current model</button></span></div>
+    <table><thead><tr><th>Action</th><th>Result</th><th>Model's top guess</th><th>Right action</th><th>Your movement / NTU</th><th>Joints seen</th><th>Height in frame</th><th>NTU accuracy</th><th></th></tr></thead>
+      <tbody id="results"><tr><td colspan="9" class="help">No recordings yet.</td></tr></tbody></table>
+  </div>
+  <div class="grid3" id="viewer" style="display:none">
+    <div class="card"><h3>You (a 3 s window, as the model sees it)</h3><canvas class="skel" id="cvYou" width="360" height="360"></canvas></div>
+    <div class="card"><h3>NTU example of <span id="vAct"></span></h3><canvas class="skel" id="cvNtu" width="360" height="360"></canvas>
+      <div class="help" id="ntuNote"></div></div>
+    <div class="card"><h3>What the model said, window by window</h3><ul class="list" id="vWins" style="max-height:330px"></ul><ul class="hints" id="vHints"></ul></div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------ Tests -->
+<section id="tests">
+  <div class="grid2">
+    <div class="card">
+      <h3>NTU test runs</h3>
+      <div class="field"><label>NTU-120 file</label><input type="text" id="pkl" value="data/ntu120_hrnet.pkl"></div>
+      <div class="field"><label>1. NTU reference for Record and check (once per model, a few minutes)</label>
+        <div class="row"><button class="primary" onclick="job('prepare')">Prepare NTU reference</button><span class="help" id="refInfo2"></span></div></div>
+      <div class="field"><label>2. Replay test: real NTU test clips through the live code</label>
+        <div class="row">
+          <label>pose FPS <input type="number" id="rFps" value="10" step="1"></label>
+          <label>window s <input type="number" id="rWin" value="3" step="0.5"></label>
+          <label>clips <input type="number" id="rN" value="1000" step="100"></label>
+          <label>jitter px <input type="number" id="rJit" value="0" step="1"></label>
+          <button onclick="job('replay')">Run</button>
+        </div>
+        <div class="help">Compares the live code with the offline evaluation on the same clips. Set pose FPS to what the Live tab shows.</div></div>
+      <div class="field"><label>3. Step-by-step check of the live code (whole clips, 30 FPS)</label>
+        <div class="row"><button onclick="job('ablate')">Run</button></div></div>
+      <div class="msg" id="jobMsg"></div>
+    </div>
+    <div class="card">
+      <div class="row between"><h3>Output <span id="jobName"></span></h3><button class="small danger" onclick="post('/api/jobs/stop')">Stop</button></div>
+      <pre class="log" id="log">Nothing run yet.</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------ Settings -->
+<section id="settings">
+  <div class="grid2">
+    <div class="card">
+      <h3>Camera</h3>
+      <div class="field"><label>Phone address (IP Webcam), webcam number, or video file</label>
+        <div class="row"><input type="text" id="sSource" style="flex:1; min-width:240px" placeholder="http://192.168.1.23:8080">
+          <button onclick="testCam()">Test</button></div>
+        <div class="row" style="margin-top:4px"><button class="small" onclick="setSrc('0')">Laptop webcam</button><button class="small" onclick="setSrc('mock')">Test skeleton (no camera)</button></div>
+        <div class="help">Type the address IP Webcam shows at the bottom of the phone screen; /video is added for you. Laptop addresses: <span id="ips">-</span></div>
+        <div class="msg" id="camMsg"></div></div>
+      <h3 style="margin-top:20px">Model</h3>
+      <div class="field"><label>Action model</label><select id="sModel"></select>
+        <div class="help">Any .pt model file in the live-demo folder is listed here.</div></div>
+      <div class="field"><label>Pose model</label><select id="sPose"><option value="lightweight">lightweight (fastest)</option><option value="balanced">balanced (more accurate, slower)</option><option value="performance">performance (most accurate, slowest)</option></select></div>
+    </div>
+    <div class="card">
+      <h3>Recognition</h3>
+      <div class="row">
+        <div class="field"><label>Window (s)</label><input type="number" id="sWindow" step="0.5" min="1"></div>
+        <div class="field"><label>Confidence to show</label><input type="number" id="sThreshold" step="0.05" min="0" max="1"></div>
+        <div class="field"><label>Still below</label><input type="number" id="sStill" step="0.02" min="0"></div>
+        <div class="field"><label>Frame sampling</label><select id="sSampling"><option value="interp">interpolate (low FPS)</option><option value="nearest">nearest frame (30 FPS)</option></select></div>
+      </div>
+      <div class="field"><label>Actions the live view chooses from</label>
+        <label><input type="radio" name="aMode" value="default"> best 37 single-person actions (default)</label>
+        <label><input type="radio" name="aMode" value="all"> all 120</label>
+        <label><input type="radio" name="aMode" value="custom"> custom (comma-separated NTU names)</label>
+        <textarea id="sActions" rows="3"></textarea></div>
+      <div class="row"><button class="primary" onclick="saveSettings()">Save and apply</button></div>
+      <div class="msg" id="setMsg"></div>
+    </div>
+  </div>
+</section>
+
+<div id="overlay"><div class="act" id="ovAct"></div><div class="big" id="ovBig"></div><div class="sub" id="ovSub"></div></div>
+
 <script>
 const $ = id => document.getElementById(id);
 const ALERTS = new Set(["falling", "staggering"]);
+const SUGGESTED = ["arm swings", "nod head/bow", "salute", "touch chest (stomachache/heart pain)", "hand waving", "clapping", "jump up", "squat down", "arm circles", "cross arms"];
+const EDGES = [[0,1],[0,2],[1,3],[2,4],[0,5],[0,6],[5,7],[7,9],[6,8],[8,10],[5,11],[6,12],[11,13],[13,15],[12,14],[14,16],[5,6],[11,12]];
 const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct = v => (v * 100).toFixed(0) + "%";
+async function post(url, body) { const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body || {})}); return r.json(); }
+const getj = async url => (await fetch(url, {cache:"no-store"})).json();
+function bars(list) { return list.map(([n, v]) => `<div class="bar"><span class="name" title="${esc(n)}">${esc(cap(n))}</span><div class="track"><div class="fill" style="width:${(v*100).toFixed(1)}%"></div></div><span class="val">${pct(v)}</span></div>`).join(""); }
+function msg(id, text, kind) { const e = $(id); e.textContent = text; e.className = "msg " + (kind || "info"); }
+
+// ---------------- tabs (one camera stream at a time)
+let tab = "live";
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+function showTab(t) {
+  tab = t;
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === t));
+  document.querySelectorAll("img.cam").forEach(img => { const want = img.closest("section").id === t; if (want && !img.src.includes("stream")) img.src = "/stream.mjpg?" + Date.now(); if (!want) img.removeAttribute("src"); });
+  if (t === "record") loadResults();
+  if (t === "settings") loadSettings();
+  if (t === "tests") loadResults();
+}
+
+// ---------------- skeleton player
+function drawSkel(cv, frame) {
+  const g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.clearRect(0, 0, W, H);
+  g.strokeStyle = "#e3e8ee"; g.lineWidth = 1; g.beginPath(); g.moveTo(W/2, 0); g.lineTo(W/2, H); g.moveTo(0, H*0.55); g.lineTo(W, H*0.55); g.stroke();
+  if (!frame) { g.fillStyle = "#9aa5b1"; g.font = "14px Arial"; g.textAlign = "center"; g.fillText("nothing to show", W/2, H/2); return; }
+  const s = H / 6, P = j => [W/2 + frame[j][0] * s, H*0.55 + frame[j][1] * s], ok = j => frame[j][2] > 0.3;
+  g.strokeStyle = "#156082"; g.lineWidth = 4; g.lineCap = "round";
+  for (const [a, b] of EDGES) if (ok(a) && ok(b)) { const [x1, y1] = P(a), [x2, y2] = P(b); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
+  for (let j = 0; j < 17; j++) if (ok(j)) { const [x, y] = P(j); g.fillStyle = (j === 9 || j === 10) ? "#c62828" : "#1b2430"; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); }
+}
+const players = {};   // canvas id -> frames
+function play(id, frames) { players[id] = frames; }
+let pf = 0;
+setInterval(() => { pf = (pf + 1) % 48; for (const [id, fr] of Object.entries(players)) drawSkel($(id), fr ? fr[pf] : null); }, 1000 / 16);
+
+// ---------------- state polling
+let lastState = {}, seq = null, spoken = {};
 async function tick() {
   try {
-    const s = await (await fetch("/state", {cache: "no-store"})).json();
-    $("model").textContent = s.model; $("source").textContent = s.source; $("status").textContent = s.status;
-    $("label").textContent = cap(s.label);
-    $("label").style.color = ALERTS.has(s.label) ? "var(--alert)" : "var(--ink)";
-    $("conf").textContent = s.conf > 0 ? `confidence ${(s.conf * 100).toFixed(0)}%` : " ";
-    $("bars").innerHTML = s.top.map(([n, v]) =>
-      `<div class="bar"><span class="name" title="${n}">${cap(n)}</span><div class="track"><div class="fill" style="width:${(v * 100).toFixed(1)}%"></div></div><span class="val">${(v * 100).toFixed(0)}%</span></div>`).join("");
-    $("events").innerHTML = s.events.map(e =>
-      `<li class="${ALERTS.has(e.label) ? "warn" : ""}"><span><span class="time">${e.t}</span>${cap(e.label)}</span><span>${(e.conf * 100).toFixed(0)}%</span></li>`).join("");
-    $("alert").style.display = s.alert ? "block" : "none"; $("alertText").textContent = (s.alert || "").toUpperCase();
-    $("camfps").textContent = s.cam_fps ? s.cam_fps.toFixed(1) : "-";
-    $("posefps").textContent = s.pose_fps ? s.pose_fps.toFixed(1) : "-";
-    $("posems").textContent = s.pose_ms ? s.pose_ms.toFixed(0) + " ms" : "-";
-    $("actms").textContent = s.act_ms ? s.act_ms.toFixed(1) + " ms" : "-";
-    $("persons").textContent = s.persons; $("motion").textContent = (s.motion ?? 0).toFixed(2);
-  } catch (e) { $("status").textContent = "dashboard lost connection to the server"; }
+    const s = await getj("/state"); lastState = s;
+    $("pModel").textContent = "Model: " + s.model + (s.model_top1 ? ` (NTU ${pct(s.model_top1)})` : "");
+    $("pSource").textContent = "Camera: " + s.source;
+    $("pStatus").textContent = s.status;
+    $("pStatus").className = "pill " + (/connected|synthetic/.test(s.status) ? "good" : /cannot|lost|no camera/.test(s.status) ? "bad" : "");
+    $("pBusy").style.display = s.busy ? "" : "none"; $("pBusy").textContent = s.busy;
+    if (tab === "live") {
+      $("label").textContent = cap(s.label); $("label").style.color = ALERTS.has(s.label) ? "var(--alert)" : "var(--ink)";
+      $("conf").textContent = s.conf > 0 ? `confidence ${pct(s.conf)}` : " "; $("nActs").textContent = s.n_actions;
+      $("bars").innerHTML = bars(s.top); $("barsAll").innerHTML = bars(s.top_all || []);
+      $("events").innerHTML = s.events.map(e => `<li class="${ALERTS.has(e.label) ? "warn" : ""}"><span><span class="time">${e.t}</span>${esc(cap(e.label))}</span><span>${pct(e.conf)}</span></li>`).join("");
+      $("alert").style.display = s.alert ? "block" : "none"; $("alertText").textContent = (s.alert || "").toUpperCase();
+      $("camfps").textContent = s.cam_fps ? s.cam_fps.toFixed(1) : "-"; $("posefps").textContent = s.pose_fps ? s.pose_fps.toFixed(1) : "-";
+      $("posems").textContent = s.pose_ms ? s.pose_ms.toFixed(0) + " ms" : "-"; $("actms").textContent = s.act_ms ? s.act_ms.toFixed(1) + " ms" : "-";
+      $("persons").textContent = s.persons; $("motion").textContent = (s.motion ?? 0).toFixed(2);
+    }
+    if (s.job && s.job.name && tab === "tests") pollJob();
+    recTick(s.rec);
+  } catch (e) { $("pStatus").textContent = "dashboard lost connection to app.py"; $("pStatus").className = "pill bad"; }
   setTimeout(tick, 250);
 }
-tick();
+setInterval(async () => { if (tab === "live") { try { const v = await getj("/api/view"); play("cvLive", v.view); } catch (e) {} } }, 3000);
+
+// ---------------- voice and beeps
+let actx = null;
+function beep(freq, ms) { try { actx = actx || new AudioContext(); const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = freq; o.connect(g); g.connect(actx.destination); g.gain.value = 0.25; o.start(); o.stop(actx.currentTime + ms / 1000); } catch (e) {} }
+function say(t) { if (!$("voice").checked || !window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.rate = 1.05; speechSynthesis.speak(u); }
+const spokenName = a => a.split(" (")[0].replace("/", " or ");
+
+// ---------------- recording
+let ACTS_ALL = [], STRONG = [], picked = new Set(SUGGESTED);
+function renderActs() {
+  const list = $("showAll").checked ? ACTS_ALL : STRONG.concat(SUGGESTED.filter(a => !STRONG.includes(a)));
+  $("acts").innerHTML = list.map(a => `<label><input type="checkbox" value="${esc(a)}" ${picked.has(a) ? "checked" : ""} onchange="this.checked ? picked.add(this.value) : picked.delete(this.value)"> ${esc(cap(a))}</label>`).join("");
+}
+function pickActs(mode) { picked = new Set(mode === "ten" ? SUGGESTED : []); renderActs(); }
+async function startSeq() {
+  const queue = ACTS_ALL.length ? ACTS_ALL.filter(a => picked.has(a)) : [...picked];
+  if (!queue.length) { $("seqInfo").textContent = "Tick at least one action."; return; }
+  try { actx = actx || new AudioContext(); actx.resume(); } catch (e) {}
+  seq = {queue, i: 0, waiting: false}; $("btnSeq").disabled = true; $("btnStop").disabled = false;
+  nextRec(true);
+}
+async function nextRec(first) {
+  if (!seq) return;
+  if (seq.i >= seq.queue.length) { say("All done."); endSeq(`Recorded ${seq.queue.length} actions.`); return; }
+  const a = seq.queue[seq.i], cd = Number($("cd").value) + (first ? 6 : 0);
+  spoken = {}; seq.waiting = true;
+  const r = await post("/api/record", {action: a, countdown: cd, secs: Number($("secs").value)});
+  if (!r.ok) { endSeq(r.msg); return; }
+  say(`${first ? "Get into place. " : ""}Next: ${spokenName(a)}`);
+  $("seqInfo").textContent = `${seq.i + 1} of ${seq.queue.length}: ${a}`;
+}
+function endSeq(text) { seq = null; $("btnSeq").disabled = false; $("btnStop").disabled = true; $("seqInfo").textContent = text || ""; $("overlay").style.display = "none"; }
+async function stopSeq() { await post("/api/record/cancel"); endSeq("Stopped."); }
+function recTick(rec) {
+  const ov = $("overlay");
+  if (!rec || !seq) { if (!seq) ov.style.display = "none"; return; }
+  ov.style.display = "flex"; $("ovAct").textContent = cap(rec.action);
+  if (rec.phase === "countdown") {
+    const n = Math.ceil(rec.to_go); ov.className = "count"; $("ovBig").textContent = n; $("ovSub").textContent = "get ready";
+    if (n <= 3 && n >= 1 && !spoken["c" + n]) { spoken["c" + n] = 1; beep(660, 120); if (n === 3) say("3"); }
+  } else if (rec.phase === "recording") {
+    ov.className = "go"; $("ovBig").textContent = "GO"; $("ovSub").textContent = `keep doing it: ${Math.max(0, rec.to_stop).toFixed(0)} s`;
+    if (!spoken.go) { spoken.go = 1; beep(990, 300); say("Go"); }
+  } else {
+    ov.className = "stop"; $("ovBig").textContent = "STOP"; $("ovSub").textContent = rec.phase === "scoring" ? "scoring..." : "";
+    if (!spoken.stop) { spoken.stop = 1; beep(440, 400); say("Stop"); }
+    if (rec.phase === "done" && seq.waiting) {
+      seq.waiting = false; loadResults(rec.action);
+      const r = rec.result || {}; $("ovSub").textContent = r.verdict ? `${r.verdict}` : "";
+      seq.i += 1; setTimeout(() => nextRec(false), seq.i >= seq.queue.length ? 1500 : 2500);
+    }
+  }
+}
+
+// ---------------- results and viewer
+let RESULTS = {}, selAct = null;
+async function loadResults(select) {
+  const d = await getj("/api/recordings"); RESULTS = d.results || {};
+  const ri = d.reference.ready ? `NTU reference: ${d.reference.model}, ${d.reference.made}` : "No NTU reference yet: Tests > Prepare NTU reference";
+  $("refInfo").textContent = ri; $("refInfo2").textContent = ri;
+  const order = Object.keys(RESULTS).sort((a, b) => (RESULTS[b].time || 0) - (RESULTS[a].time || 0));
+  if (!order.length) { $("results").innerHTML = `<tr><td colspan="9" class="help">No recordings yet.</td></tr>`; return; }
+  $("results").innerHTML = order.map(a => {
+    const r = RESULTS[a], top = r.top3 && r.top3[0] ? `${esc(cap(r.top3[0][0]))} ${pct(r.top3[0][1])}` : "-";
+    const share = r.demo_top1_share ?? r.top1_share;
+    const mv = r.motion !== undefined ? `${r.motion.toFixed(2)} / ${r.ntu_motion !== undefined ? r.ntu_motion.toFixed(2) : "?"}` : "-";
+    return `<tr class="${a === selAct ? "sel" : ""}" onclick="viewRec('${esc(a).replace(/'/g, "\\'")}')">
+      <td><b>${esc(cap(a))}</b>${r.hints && r.hints.length ? `<ul class="hints">${r.hints.map(h => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}</td>
+      <td><span class="tag ${r.verdict === "no person" ? "no" : r.verdict}">${esc(r.verdict || "-")}</span>${share !== undefined && share !== null ? `<div class="help">${pct(share)} of windows</div>` : ""}</td>
+      <td>${top}</td><td>${r.p_right !== undefined ? pct(r.p_right) + `<div class="help">rank ${r.median_rank} of 120</div>` : "-"}</td>
+      <td>${mv}</td><td>${r.joints_seen ?? "-"} / 17</td><td>${r.body_height !== undefined ? pct(r.body_height) : "-"}</td>
+      <td>${r.ntu_acc !== undefined ? pct(r.ntu_acc) : "-"}</td>
+      <td><button class="small" onclick="event.stopPropagation(); redo('${esc(a).replace(/'/g, "\\'")}')">Re-record</button></td></tr>`;
+  }).join("");
+  if (select) viewRec(select);
+}
+async function viewRec(a) {
+  selAct = a; document.querySelectorAll("#results tr").forEach(tr => tr.classList.toggle("sel", tr.querySelector("b") && tr.querySelector("b").textContent === cap(a)));
+  const v = await getj("/api/recording_view?action=" + encodeURIComponent(a));
+  $("viewer").style.display = ""; $("vAct").textContent = a;
+  play("cvYou", v.you); play("cvNtu", v.ntu);
+  $("ntuNote").textContent = v.ntu ? "A typical NTU test person doing it, as the model sees them." : "Prepare the NTU reference (Tests tab) to see an example.";
+  $("vWins").innerHTML = (v.windows || []).map(w => `<li><span><span class="time">to ${w.end}s</span>${w.top.map(t => `${esc(t[0])} ${pct(t[1])}`).join(", ")}</span><span title="probability of ${esc(a)}">${pct(w.right)}</span></li>`).join("") || `<li class="help">No windows with a person in view.</li>`;
+  const r = RESULTS[a] || {}; $("vHints").innerHTML = (r.hints || []).map(h => `<li>${esc(h)}</li>`).join("");
+}
+function redo(a) { picked = new Set([a]); renderActs(); startSeq(); }
+async function rescore() { $("refInfo").textContent = "re-scoring..."; const r = await post("/api/rescore"); loadResults(selAct); $("refInfo").textContent = r.msg; }
+
+// ---------------- tests
+async function job(name) {
+  const body = {name, pkl: $("pkl").value, fps: $("rFps").value, window: $("rWin").value, n: $("rN").value, jitter: $("rJit").value};
+  const r = await post("/api/jobs/run", body);
+  if (r.ok) msg("jobMsg", `Started: ${name}. Output on the right.`, "info"); else msg("jobMsg", r.msg, "bad");
+  pollJob();
+}
+async function pollJob() {
+  const j = await getj("/api/jobs"); const el = $("log"), atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
+  $("jobName").textContent = j.name ? `(${j.name}${j.running ? ", running" : ""})` : ""; el.textContent = j.log.join("\n") || "Nothing run yet.";
+  if (atEnd) el.scrollTop = el.scrollHeight;
+  if (!j.running && j.name === "prepare" && j.rc === 0) loadResults();
+}
+
+// ---------------- settings
+async function loadSettings() {
+  const d = await getj("/api/settings"), s = d.settings;
+  $("sSource").value = s.source === "mock" ? "mock" : s.source; $("ips").textContent = d.laptop_ips.join(", ") || "unknown";
+  $("sModel").innerHTML = d.models.map(m => `<option value="${esc(m)}" ${m === s.model ? "selected" : ""}>${esc(m === "stgcnpp" ? "PYSKL ST-GCN++ (pretrained)" : m)}</option>`).join("");
+  if (!d.models.includes(s.model)) $("sModel").innerHTML += `<option selected value="${esc(s.model)}">${esc(s.model)} (missing)</option>`;
+  $("sPose").value = s.pose; $("sWindow").value = s.window; $("sThreshold").value = s.threshold; $("sStill").value = s.still; $("sSampling").value = s.sampling;
+  const mode = s.actions.trim() === "" ? "default" : s.actions.trim() === "all" ? "all" : "custom";
+  document.querySelector(`input[name=aMode][value=${mode}]`).checked = true; $("sActions").value = mode === "custom" ? s.actions : "";
+}
+function setSrc(v) { $("sSource").value = v; testCam(); }
+async function testCam() {
+  msg("camMsg", "Testing...", "info");
+  const r = await getj("/api/camera_test?source=" + encodeURIComponent($("sSource").value));
+  msg("camMsg", r.msg + (r.ok ? " Press Save and apply to use it." : ""), r.ok ? "good" : "bad");
+  $("ips").textContent = (r.laptop_ips || []).join(", ") || "unknown";
+}
+async function saveSettings() {
+  const mode = document.querySelector("input[name=aMode]:checked").value;
+  const body = {source: $("sSource").value, model: $("sModel").value, pose: $("sPose").value, window: $("sWindow").value,
+                threshold: $("sThreshold").value, still: $("sStill").value, sampling: $("sSampling").value,
+                actions: mode === "default" ? "" : mode === "all" ? "all" : $("sActions").value};
+  msg("setMsg", "Applying...", "info");
+  const r = await post("/api/settings", body);
+  msg("setMsg", r.ok ? `Saved. ${r.msg === "saved" ? "" : r.msg}` : r.msg, r.ok ? "good" : "bad");
+}
+
+(async () => {
+  const d = await getj("/api/settings"); ACTS_ALL = d.classes; STRONG = d.strong; renderActs();
+  if (!d.settings.source) { showTab("settings"); msg("camMsg", "Set the camera first: type the address IP Webcam shows on the phone, press Test, then Save and apply.", "info"); }
+  tick();
+})();
 </script>
 </body>
 </html>
