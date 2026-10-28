@@ -361,7 +361,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Ca
             else if (ips.isEmpty()) sb.append("No network. Connect to Wi-Fi or turn on the hotspot.");
             else {
                 sb.append("Laptop camera address:");
-                for (String ip : ips) sb.append("\n").append(ip).append(":").append(PORT);
+                for (String ip : ips) sb.append("\n").append(ip);
             }
             if (camera != null || !streaming) addrText.setText(sb.toString());
             int v = server.viewers();
@@ -373,16 +373,24 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Ca
         }
     };
 
-    /** IPv4 addresses of this phone on Wi-Fi or its own hotspot (the ones a laptop can reach). */
+    /** "ip:port (Wi-Fi)" for each IPv4 address a laptop can reach: Wi-Fi and the phone's own hotspot, not mobile data. */
     static List<String> addresses() {
         List<String> out = new ArrayList<String>();
         try {
             for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 if (!ni.isUp() || ni.isLoopback()) continue;
-                String n = ni.getName();
-                if (n.startsWith("rmnet") || n.startsWith("ccmni") || n.startsWith("dummy") || n.startsWith("tun")) continue;   // mobile data, VPN
-                for (InetAddress a : Collections.list(ni.getInetAddresses()))
-                    if (a instanceof Inet4Address && !a.isLoopbackAddress()) out.add(a.getHostAddress());
+                String n = ni.getName().toLowerCase();
+                if (n.contains("rmnet") || n.startsWith("ccmni") || n.startsWith("seth") || n.startsWith("wwan") || n.startsWith("pdp")
+                        || n.startsWith("dummy") || n.startsWith("tun") || n.startsWith("ppp")) continue;   // mobile data, VPN
+                String label = n.startsWith("ap") || n.startsWith("swlan") || n.startsWith("softap") || n.equals("wlan1") ? "hotspot"
+                        : n.startsWith("wlan") ? "Wi-Fi" : n;
+                for (InetAddress a : Collections.list(ni.getInetAddresses())) {
+                    if (!(a instanceof Inet4Address) || a.isLoopbackAddress()) continue;
+                    String e = a.getHostAddress() + ":" + PORT + "  (" + label + ")";
+                    boolean dup = false;
+                    for (String o : out) if (o.startsWith(a.getHostAddress() + ":")) dup = true;
+                    if (!dup) out.add(e);
+                }
             }
         } catch (Exception ignored) { }
         return out;
