@@ -9,18 +9,31 @@ cd ~/Desktop/final-year-project/live-demo && bash start.sh --install
 ```
 
 This starts the dashboard and opens http://localhost:8765 in the browser. `--install` also adds **SafeSense Demo** to the
-applications menu, so from then on you can start it without a terminal. Everything else is done in the dashboard:
+applications menu, so from then on you can start it without a terminal.
 
-- **Settings**: type the address IP Webcam shows on the phone and press **Test**. It tells you in plain words whether
-  the phone is reachable, and what to change if not. Choose the model and pose model size, then **Save and apply**.
-  Settings are kept in settings.json for next time.
-- **Live**: camera with skeleton, current action, recent actions, plus what the model actually sees (your normalised
-  skeleton) and its top 5 over all 120 actions.
-- **Record and check**: tick actions and press **Record checked actions**. A voice and a big countdown tell you when to
-  start (GO) and stop, so you can stand back from the laptop. Each recording is scored by the model and compared with the
-  NTU people doing the same action, with hints such as "you moved much less than the NTU people do".
-- **Tests**: **Prepare NTU reference** once (needs data/ntu120_hrnet.pkl), which the Record tab uses for its NTU
-  comparison. Also the replay test and the step-by-step pipeline check, with their output shown on the page.
+**Live demo in three steps**
+
+1. Open **SafeSense Cam** on the phone. Put the laptop on the same Wi-Fi, or on the phone's hotspot.
+2. Start SafeSense Demo. If no camera is set, the Demo page searches the network for the phone by itself; press
+   **Use** on the address it finds. It is remembered for next time.
+3. Stand in view and do an action. Then press the **Stress the input** buttons (hide right arm, hide legs, sensor
+   noise, lose 50% of frames, drop to 5 fps, all at once), or **Run automatic stress test** while you keep doing one
+   action.
+
+What the Demo page shows:
+
+- **SafeSense recognises**: the action, and underneath the same model on the same poses without the robust pipeline,
+  so the audience sees what the pipeline adds.
+- **Input quality right now**: Good / Fair / Poor with joints visible, pose confidence, frame rate and steadiness. It
+  drops as soon as a degradation is injected.
+- **Robust pipeline** switch: drops joints the pose model is unsure of instead of trusting a guess, rejects glitches,
+  fills short gaps in time, and says "input too degraded" instead of guessing when too little of the body is left.
+- **Measured on NTU-120 test clips**: the result of **Tests > Robustness test**, which replays real NTU test clips
+  through this exact pipeline under every stress condition, with the pipeline on and off. Run it once before the demo
+  (needs data/ntu120_hrnet.pkl) so the live demo is backed by measured numbers.
+
+The other pages: **Setup** (camera search, address, models, comparison line, advanced settings), **Record and check**
+(guided recordings scored against how the NTU people do each action) and **Tests**.
 
 ## 1. One-time setup on the laptop
 
@@ -41,7 +54,7 @@ Check the install without a camera:
 python app.py --mock
 ```
 
-Open http://localhost:8000. A synthetic stick figure should appear, and the header should say "Model: SafeSense (original)". Stop it with Ctrl+C.
+Open http://localhost:8765. A synthetic stick figure should appear, and the header should say "Model: SafeSense (original)". Stop it with Ctrl+C.
 
 ## 2. Phone (Android)
 
@@ -57,7 +70,7 @@ cd ~/Desktop/final-year-project/live-demo && source .venv/bin/activate
 python app.py --source http://192.168.1.23:8080/video
 ```
 
-Open http://localhost:8000 (full screen with F11 for the presentation).
+Open http://localhost:8765 (full screen with F11 for the presentation).
 
 The dashboard shows the live video with the skeleton, the current action with its top 5 confidences, a log of recent actions, a red alert banner for falling or staggering, and FPS and timing stats.
 

@@ -3,10 +3,10 @@
 Start:  bash start.sh            (opens http://localhost:8765; everything else is set from the dashboard)
    or:  python app.py [--source http://<phone-ip>:8080/video] [--checkpoint safesense_pose_ntu120.pt] [--mock]
 
-The dashboard has four tabs: Live (camera, skeleton, current action, what the model sees), Record & check (guided
-recordings of you doing each action, scored and compared with the NTU people), Tests (NTU replay tests) and Settings
-(camera address with a connection test, model, pose model size, window, thresholds). Settings are kept in
-settings.json, so the next start uses them.
+The Demo page shows the camera, what SafeSense recognises, how good the input is right now, and buttons that degrade
+the input on purpose (hidden limbs, noise, lost frames, low frame rate) so the audience sees the robust pipeline cope.
+Setup finds the phone on the network by itself. Record and check, and Tests, are for preparing the demo. Settings
+are kept in settings.json, so the next start uses them.
 """
 import argparse, threading, time, collections, json, os, socket, subprocess, sys
 from pathlib import Path
@@ -15,6 +15,7 @@ import numpy as np, cv2, torch, uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from safesense_pose import SafeSensePose, pack, COCO_EDGES, T_STEPS, NTU120_CLASSES
+import robust
 
 HERE = Path(__file__).resolve().parent
 SETTINGS = HERE / "settings.json"
@@ -40,7 +41,7 @@ if __name__ == "__main__" and SETTINGS.exists():
     try: saved = json.loads(SETTINGS.read_text())
     except Exception: saved = {}
 DEFAULTS = dict(source="", pose="lightweight", window=3.0, threshold=0.40, still=0.18, actions="",
-                sampling=os.environ.get("SAFESENSE_SAMPLING", "interp"))
+                sampling=os.environ.get("SAFESENSE_SAMPLING", "interp"), robust=True, compare="pipeline")
 for k, v in DEFAULTS.items():
     if getattr(args, k, None) is None: setattr(args, k, saved.get(k, v))
 if args.mock: args.source = "mock"
@@ -77,33 +78,43 @@ def set_actions(spec):
     ACTIONS, ACT_IDX = acts, [CLASSES.index(a) for a in acts]
 
 
-def load_model(choice):
-    """choice: a checkpoint file name/path, or "stgcnpp". Sets the module globals the pipeline reads."""
-    global PYSKL, ORIG, PY_MODELS, model, ck, CLASSES, MODEL_NAME, MODEL_CHOICE
+def build_model(choice):
+    """choice: a checkpoint file name/path, or "stgcnpp" -> a model slot (dict) the pipeline can run."""
     if choice == "stgcnpp":   # pretrained PYSKL ST-GCN++ on NTU-120 xsub (HRNet 2D), joint and/or bone stream
         from pyskl_stgcnpp import load_pyskl
         streams = [(f, HERE / f"stgcnpp_{f}.pth") for f in ("j", "b") if (HERE / f"stgcnpp_{f}.pth").exists()]
         if not streams: raise FileNotFoundError(f"no ST-GCN++ weights in {HERE}: run  bash get_stgcnpp.sh  first")
         pm = [(f, load_pyskl(pth)) for f, pth in streams]
         top1 = 0.864 if len(pm) == 2 else {"j": 0.844, "b": 0.848}[pm[0][0]]
-        new = dict(PYSKL=True, ORIG=False, PY_MODELS=pm, model=pm[0][1], ck=dict(cross_subject=dict(top1=top1)),
-                   CLASSES=list(NTU120_CLASSES), MODEL_NAME="PYSKL ST-GCN++ (" + " + ".join({"j": "joint", "b": "bone"}[f] for f, _ in pm) + ")")
-    else:
-        path = Path(choice) if Path(choice).is_absolute() else HERE / choice
-        if not path.exists(): path = Path(choice)
-        if not path.exists(): raise FileNotFoundError(f"model file not found: {choice} (put the .pt file next to app.py)")
-        c = torch.load(path, map_location="cpu", weights_only=False)
-        orig = c.get("arch") == "safesense_orig"
-        if orig:   # original SafeSense architecture (06_train_safesense_original_ntu120)
-            from safesense_orig import SafeSenseCOCO
-            m = SafeSenseCOCO(c["num_classes"])
-        else:      # SafeSense-Pose (04 / 05 notebooks)
-            m = SafeSensePose(c["num_classes"], widths=tuple(c.get("widths", (64, 64, 64, 128, 128, 128))))
-        m.load_state_dict(c["model"]); m.eval()
-        new = dict(PYSKL=False, ORIG=orig, PY_MODELS=[], model=m, ck=c, CLASSES=c["classes"],
-                   MODEL_NAME=("SafeSense (original)" if orig else "SafeSense-Pose") + f" [{path.name}]")
+        return dict(choice=choice, kind="pyskl", PYSKL=True, ORIG=False, PY_MODELS=pm, model=pm[0][1],
+                    ck=dict(cross_subject=dict(top1=top1)), CLASSES=list(NTU120_CLASSES),
+                    name="ST-GCN++ (pretrained, " + " + ".join({"j": "joint", "b": "bone"}[f] for f, _ in pm) + ")")
+    path = Path(choice) if Path(choice).is_absolute() else HERE / choice
+    if not path.exists(): path = Path(choice)
+    if not path.exists(): raise FileNotFoundError(f"model file not found: {choice} (put the .pt file next to app.py)")
+    c = torch.load(path, map_location="cpu", weights_only=False)
+    orig = c.get("arch") == "safesense_orig"
+    if orig:   # original SafeSense architecture, corruption-aware training (06_train_safesense_original_ntu120)
+        from safesense_orig import SafeSenseCOCO
+        m = SafeSenseCOCO(c["num_classes"])
+    else:      # SafeSense-Pose (04 / 05 notebooks)
+        m = SafeSensePose(c["num_classes"], widths=tuple(c.get("widths", (64, 64, 64, 128, 128, 128))))
+    m.load_state_dict(c["model"]); m.eval()
+    return dict(choice=choice, kind="orig" if orig else "pose", PYSKL=False, ORIG=orig, PY_MODELS=[], model=m, ck=c,
+                CLASSES=c["classes"], name=("SafeSense (original)" if orig else "SafeSense-Pose") + f" [{path.name}]")
+
+
+COMPARE = None    # optional second model run on the same input, for side by side comparison
+
+
+def load_model(choice):
+    """Make `choice` the main model. Sets the module globals the pipeline and the test scripts read."""
+    global PYSKL, ORIG, PY_MODELS, model, ck, CLASSES, MODEL_NAME, MODEL_CHOICE, MAIN
+    slot = build_model(choice)
     with model_lock:
-        globals().update(new); MODEL_CHOICE = choice
+        MAIN = slot
+        PYSKL, ORIG, PY_MODELS, model, ck, CLASSES = (slot[k] for k in ("PYSKL", "ORIG", "PY_MODELS", "model", "ck", "CLASSES"))
+        MODEL_NAME, MODEL_CHOICE = slot["name"], choice
         torch.set_num_threads(4 if PYSKL else 2)
         try: set_actions(args.actions)
         except ValueError as e: print(e, "- using the default action list"); args.actions = ""; set_actions("")
@@ -112,10 +123,23 @@ def load_model(choice):
           f"{ck['cross_subject']['top1']:.3f}; demo actions: {len(ACTIONS)}")
 
 
+def load_compare(choice):
+    """The comparison line: "" none, "pipeline" the same model with the robust pipeline switched the other way (the
+    default: shows what the pipeline adds), or another model file / "stgcnpp" run on exactly the same input."""
+    global COMPARE
+    slot = dict(choice="pipeline", kind="pipeline") if choice == "pipeline" else build_model(choice) if choice else None
+    with model_lock: COMPARE = slot
+    args.compare = choice or ""
+
+
+MAIN = None
 try: load_model(MODEL_CHOICE)
 except FileNotFoundError as e:
     if __name__ != "__main__": raise SystemExit(str(e))
-    print(e, "\nchoose a model in the dashboard's Settings tab")
+    print(e, "\nchoose a model in the dashboard's Setup page")
+if __name__ == "__main__" and args.compare:
+    try: load_compare(args.compare)
+    except Exception as e: print("comparison model not loaded:", e); args.compare = ""
 from pyskl_stgcnpp import pyskl_input, CLIP_LEN, FPS
 from safesense_orig import body_window
 
@@ -123,8 +147,9 @@ from safesense_orig import body_window
 lock = threading.Lock()
 S = dict(frame=None, frame_t=0.0, cam_fps=0.0, pose_fps=0.0, pose_ms=0.0, act_ms=0.0, persons=0, label="starting", conf=0.0,
          frame_wh=(640, 480), top=[], top_all=[], alert=None, alert_t=0.0, events=collections.deque(maxlen=20), status="starting",
-         jpeg=None, motion=0.0, view=None, rec=None, busy="")
-buf = collections.deque()  # (t, kp [P,17,2], score [P,17])
+         jpeg=None, motion=0.0, view=None, rec=None, busy="", quality={}, cmp=None, degrade="", lost=0)
+buf = collections.deque()  # (t, kp [P,17,2], score [P,17]) after any injected degradation
+DEGRADER = robust.Degrader()
 
 
 # ---------------------------------------------------------------- camera
@@ -145,7 +170,10 @@ def local_ips():
     except Exception:
         try: ips = socket.gethostbyname_ex(socket.gethostname())[2]
         except Exception: ips = []
-    return [ip for ip in ips if not ip.startswith("127.")]
+    try:   # the address of the interface that would carry traffic out (no packet is sent)
+        u = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); u.connect(("10.255.255.255", 1)); ips.append(u.getsockname()[0]); u.close()
+    except Exception: pass
+    return list(dict.fromkeys(ip for ip in ips if not ip.startswith(("127.", "169.254.", "172.17."))))
 
 
 def camera_check(src):
@@ -165,7 +193,7 @@ def camera_check(src):
                         " If they are on the same Wi-Fi, that network may block devices from talking to each other "
                         "(common on college and public Wi-Fi): use the phone's hotspot instead.")
         except ConnectionRefusedError:
-            return dict(res, msg=f"{host} answered, but nothing is serving on port {port}. In IP Webcam, tap 'Start server' "
+            return dict(res, msg=f"{host} answered, but nothing is serving on port {port}. Open the camera app on the phone (SafeSense Cam starts serving by itself) "
                         "and use the address it shows at the bottom of the screen.")
         except socket.gaierror:
             return dict(res, msg=f"'{host}' is not a valid address.")
@@ -174,7 +202,7 @@ def camera_check(src):
     cap = open_capture(src)
     ok, frame = cap.read() if cap.isOpened() else (False, None)
     cap.release()
-    if not ok: return dict(res, msg=f"Connected, but no video frames came from {src}. For IP Webcam the address ends in /video.")
+    if not ok: return dict(res, msg=f"Connected, but no video frames came from {src}. Check the camera app is showing its picture.")
     return dict(res, ok=True, msg=f"Camera OK: {frame.shape[1]}x{frame.shape[0]} frames from {src}.")
 
 
@@ -191,13 +219,13 @@ def camera_loop():
     while True:
         src = norm_source(args.source)
         if src in ("", "mock"):
-            with lock: S["status"] = "running on a synthetic test skeleton" if src == "mock" else "no camera set: open Settings"
+            with lock: S["status"] = "running on a synthetic test skeleton" if src == "mock" else "no camera set"
             time.sleep(0.5); continue
         is_file = Path(str(src)).exists()
         with lock: S["status"] = f"connecting to {src}"
         cap = open_capture(src)
         if not cap.isOpened():
-            with lock: S["status"] = f"cannot open camera {src}: see Settings > Test"
+            with lock: S["status"] = f"cannot open camera {src}"
             cap.release(); time.sleep(2); continue
         delay = 1.0 / (cap.get(cv2.CAP_PROP_FPS) or 30) if is_file else 0
         with lock: S["status"] = "camera connected"
@@ -270,25 +298,30 @@ def pose_loop():
         last_t = ft; t0 = time.time()
         kp, sc = est(frame)
         kp, sc = select_people(kp, sc)
+        raw_kp, raw_sc = kp, sc
+        d = DEGRADER(kp, sc, ft) if DEGRADER.active() else (kp, sc)   # injected degradation, when the presenter turns it on
         ms = (time.time() - t0) * 1000
         with lock:
             S["frame_wh"] = (frame.shape[1], frame.shape[0])
-            buf.append((ft, kp, sc))
+            if d is None: S["lost"] += 1
+            else:
+                kp, sc = d; buf.append((ft, kp, sc))
             while buf and buf[0][0] < ft - args.window: buf.popleft()
             S["persons"], S["pose_ms"] = len(kp), ms
             rec = S["rec"]
             if rec and rec["phase"] in ("countdown", "recording") and rec["t_go"] <= ft <= rec["t_stop"]:
                 k2 = np.zeros((2, 17, 2), np.float32); s2 = np.zeros((2, 17), np.float32); m = min(len(kp), 2)
-                k2[:m], s2[:m] = kp[:m], sc[:m]
+                k2[:m], s2[:m] = raw_kp[:m], raw_sc[:m]
                 rec["data"].append((ft - rec["t_go"], k2, s2)); rec["wh"] = S["frame_wh"]
-        annotate(frame, kp, sc)
+        annotate(frame, kp, sc, lost=d is None, note=DEGRADER.describe() if DEGRADER.active() else "")
         n += 1
         if time.time() - t_fps > 1:
             with lock: S["pose_fps"] = n / (time.time() - t_fps)
             n, t_fps = 0, time.time()
 
 
-def annotate(frame, kp, sc):
+def annotate(frame, kp, sc, lost=False, note=""):
+    if lost: return      # a lost frame never reaches the model, so the video freezes too
     img = frame.copy()
     for p in range(len(kp)):
         col = (0, 170, 255) if p == 0 else (255, 160, 0)
@@ -298,7 +331,10 @@ def annotate(frame, kp, sc):
         for i in range(17):
             if sc[p, i] > 0.3: cv2.circle(img, tuple(int(v) for v in kp[p, i]), 4, (255, 255, 255), -1, cv2.LINE_AA)
     h, w = img.shape[:2]
-    if w > 960: img = cv2.resize(img, (960, int(h * 960 / w)))
+    if w > 960: img = cv2.resize(img, (960, int(h * 960 / w))); h, w = img.shape[:2]
+    if note:   # show the audience what is being injected
+        cv2.rectangle(img, (0, 0), (w, 34), (40, 40, 200), -1)
+        cv2.putText(img, "Injected: " + note, (10, 23), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
     ok, jpg = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 75])
     if ok:
         with lock: S["jpeg"] = jpg.tobytes()
@@ -349,15 +385,19 @@ def track(items):
     return kp, sc
 
 
-def window_tensor(items=None, view=None):
-    """Poses (default: the live buffer, last `window` seconds) -> model input, sampled evenly in time, and movement.
-    `view`, if a list, gets the normalised [2, 48, 17, 5] window the model sees."""
+def window_inputs(items=None, slots=None, view=None, robust_on=None):
+    """Poses (default: the live buffer, last `window` seconds) -> one model input per slot (default: the main model),
+    sampled evenly in time, and the movement. With the robust pipeline on (args.robust), unreliable joints are marked
+    missing, glitches rejected and short gaps filled first (robust.clean_window). `view`, if a list, gets the
+    normalised [2, 48, 17, 5] window the model sees."""
     if items is None:
         with lock: items = list(buf)
+    slots = slots or [MAIN]
     items = [it for it in items if len(it[1])]
     if len(items) < 8 or items[-1][0] - items[0][0] < 1.0: return None, 0.0
     ts = np.array([it[0] for it in items]); n = len(items)
     kp, sc = track(items)
+    if args.robust if robust_on is None else robust_on: kp, sc = robust.clean_window(kp, sc, ts)
     # Training takes the frame at the centre of each of 48 equal segments of the clip (sample_frames). Do the same on
     # the time axis: each pose sample stands for one frame period dt, so the window spans n * dt.
     dt = float(np.median(np.diff(ts))); span = ts[-1] - ts[0] + dt
@@ -372,25 +412,35 @@ def window_tensor(items=None, view=None):
     x = pack(kpg, scg, idx)
     if view is not None: view.append(x)
     motion = movement(x[0])
-    if PYSKL:   # PYSKL clips are real-time 30 fps: resample the last 100/30 s onto a 30 fps grid
-        n30 = int(min(CLIP_LEN, max(8, round((ts[-1] - ts[0]) * FPS))))
-        g30 = np.linspace(ts[-1] - (n30 - 1) / FPS, ts[-1], n30)
-        k30, s30 = resample(kp, sc, ts, g30), resample(sc, sc, ts, g30, score=True)
-        with lock: wh = S["frame_wh"]
-        return tuple(pyskl_input(k30, s30, wh, f) for f, _ in PY_MODELS), motion
-    if ORIG:
-        raw, mk = body_window(kpg, scg, idx)
-        return (torch.from_numpy(raw)[None], torch.from_numpy(mk)[None]), motion
-    return (torch.from_numpy(x)[None],), motion
+    out = []
+    for sl in slots:
+        if sl["PYSKL"]:   # PYSKL clips are real-time 30 fps: resample the last 100/30 s onto a 30 fps grid
+            n30 = int(min(CLIP_LEN, max(8, round((ts[-1] - ts[0]) * FPS))))
+            g30 = np.linspace(ts[-1] - (n30 - 1) / FPS, ts[-1], n30)
+            k30, s30 = resample(kp, sc, ts, g30), resample(sc, sc, ts, g30, score=True)
+            with lock: wh = S["frame_wh"]
+            out.append(tuple(pyskl_input(k30, s30, wh, f) for f, _ in sl["PY_MODELS"]))
+        elif sl["ORIG"]:
+            raw, mk = body_window(kpg, scg, idx)
+            out.append((torch.from_numpy(raw)[None], torch.from_numpy(mk)[None]))
+        else: out.append((torch.from_numpy(x)[None],))
+    return out, motion
 
 
-def logits(x):
-    """Model input from window_tensor -> logits over all classes [C]."""
+def window_tensor(items=None, view=None, robust_on=None):
+    """The main model's input and the movement (used by the test scripts)."""
+    out, motion = window_inputs(items, [MAIN], view, robust_on)
+    return (None if out is None else out[0]), motion
+
+
+def logits(x, slot=None):
+    """Model input -> logits over all classes [C], for `slot` (default: the main model)."""
+    sl = slot or MAIN
     with torch.no_grad():
-        if PYSKL:   # average the streams' probabilities, as PYSKL's joint + bone ensemble does
-            return torch.log(torch.stack([torch.softmax(m(xi)[0], 0) for (_, m), xi in zip(PY_MODELS, x)]).mean(0) + 1e-8)
-        z = model(*x)
-        return (z[0] if ORIG else z)[0]
+        if sl["PYSKL"]:   # average the streams' probabilities, as PYSKL's joint + bone ensemble does
+            return torch.log(torch.stack([torch.softmax(m(xi)[0], 0) for (_, m), xi in zip(sl["PY_MODELS"], x)]).mean(0) + 1e-8)
+        z = sl["model"](*x)
+        return (z[0] if sl["ORIG"] else z)[0]
 
 
 def view_json(x):
@@ -398,42 +448,82 @@ def view_json(x):
     return np.round(x[0][..., :3], 3).tolist()
 
 
+class Smoother:
+    """Turns per-window probabilities into a steady label: moving average, a confidence threshold, and a change of
+    label only once the new one has led twice in a row (hysteresis), so a single odd window does not flicker."""
+    def __init__(self): self.p = None; self.shown = None; self.cand = None
+
+    def __call__(self, p):
+        if self.p is not None and len(self.p) != len(p): self.reset()
+        self.p = p if self.p is None else 0.5 * self.p + 0.5 * p
+        k = int(np.argmax(self.p)); conf = float(self.p[k])
+        if conf < args.threshold: self.cand = None; return None, conf, k
+        if self.shown != k:
+            if self.cand == k: self.shown = k
+            else: self.cand = k; return (self.shown, float(self.p[self.shown]), k) if self.shown is not None else (None, conf, k)
+        self.cand = None
+        return k, conf, k
+
+    def reset(self): self.p = None; self.shown = None; self.cand = None
+
+
+def cmp_name(sl):
+    if sl["kind"] != "pipeline": return sl["name"]
+    return "Same model without the robust pipeline" if args.robust else "Same model with the robust pipeline"
+
+
 def action_loop():
-    smooth, stable, prev = None, None, None
+    main_s, cmp_s, stable, prev = Smoother(), Smoother(), None, None
     while True:
         time.sleep(args.every); t0 = time.time()
-        if model is None: continue
+        if MAIN is None: continue
         view = []
+        with lock: items = list(buf)
         with model_lock:
-            x, motion = window_tensor(view=view)
+            cmp_slot = COMPARE; other = cmp_slot is not None and cmp_slot["kind"] == "pipeline"
+            slots = [MAIN] + ([cmp_slot] if cmp_slot and not other else [])
+            xs, motion = window_inputs(items, slots, view)
             acts, idx = list(ACTIONS), list(ACT_IDX)
-            z = logits(x) if x is not None else None
-        with lock: recent = bool(buf) and time.time() - buf[-1][0] < 1.0 and S["persons"] > 0
-        if x is None or not recent:
-            with lock: S.update(label="no person in view" if not recent else "watching...", conf=0.0, top=[], top_all=[], motion=0.0)
-            smooth = None; continue
-        p_all = torch.softmax(z, 0)                    # over all 120 NTU actions
-        p = torch.softmax(z[idx], 0).numpy()            # restricted to the demo actions
-        if smooth is None or len(smooth) != len(p): smooth = p
-        else: smooth = 0.5 * smooth + 0.5 * p
-        k = int(np.argmax(smooth)); conf = float(smooth[k]); name = acts[k]
-        if args.debug: print(f"motion {motion:.3f} | top {name} {conf:.2f} | all-class p {float(p_all[idx[k]]):.2f}")
-        low = conf < args.threshold
-        if args.still and motion < args.still and low: label = "standing still"   # never hides a confident prediction
-        elif low: label = "no clear action"
-        else: label = name
-        top = sorted(zip(acts, smooth.tolist()), key=lambda t: -t[1])[:5]
-        pa = p_all.numpy(); top_all = [[CLASSES[i], round(float(pa[i]), 3)] for i in np.argsort(-pa)[:5]]
-        now = time.time()
+            zs = [logits(x, sl) for x, sl in zip(xs, slots)] if xs is not None else None
+            if zs is not None and other:     # same model, same poses, robust pipeline the other way
+                x2, _ = window_inputs(items, [MAIN], robust_on=not args.robust)
+                zs.append(logits(x2[0], MAIN))
+                cmp_slot = dict(cmp_slot, CLASSES=MAIN["CLASSES"],
+                                name="Same model without the robust pipeline" if args.robust else "Same model with the robust pipeline")
+        quality = robust.measure_quality(items, args.window)
         with lock:
-            S.update(label=label, conf=conf if label == name else 0.0, top=[[a, round(v, 3)] for a, v in top], top_all=top_all,
-                     act_ms=(now - t0) * 1000, motion=round(motion, 4), view=view_json(view[0]))
+            recent = bool(buf) and time.time() - buf[-1][0] < 1.5 and S["persons"] > 0
+            S["quality"] = quality; S["degrade"] = DEGRADER.describe() if DEGRADER.active() else ""
+        if zs is None or not recent:
+            with lock: S.update(label="no person in view" if not recent else "watching...", conf=0.0, top=[], top_all=[], motion=0.0,
+                                cmp=dict(name=cmp_name(cmp_slot), label="-", conf=0.0) if cmp_slot else None)
+            main_s.reset(); cmp_s.reset(); continue
+        # the main model
+        z = zs[0]; p_all = torch.softmax(z, 0); p = torch.softmax(z[idx], 0).numpy()
+        k, conf, lead = main_s(p)
+        if args.debug: print(f"motion {motion:.3f} | quality {quality['score']} | top {acts[lead]} {float(main_s.p[lead]):.2f}")
+        if quality["visible"] < 0.35 or quality["fps"] < 2: label, k = "input too degraded", None   # honest: says so
+        elif k is not None: label = acts[k]
+        elif args.still and motion < args.still: label = "standing still"
+        else: label = "no clear action"
+        top = sorted(zip(acts, main_s.p.tolist()), key=lambda t: -t[1])[:5]
+        pa = p_all.numpy(); top_all = [[CLASSES[i], round(float(pa[i]), 3)] for i in np.argsort(-pa)[:5]]
+        cmp = None
+        if cmp_slot is not None and len(zs) > 1:   # the comparison model on exactly the same input
+            pc = torch.softmax(zs[1][[cmp_slot["CLASSES"].index(a) for a in acts]], 0).numpy()
+            kc, cc, _ = cmp_s(pc)
+            cmp = dict(name=cmp_slot["name"], label=acts[kc] if kc is not None else "no clear action", conf=round(cc if kc is not None else 0.0, 3))
+        now = time.time(); name = label if k is not None else None
+        with lock:
+            S.update(label=label, conf=conf if name else 0.0, top=[[a, round(v, 3)] for a, v in top], top_all=top_all,
+                     act_ms=(now - t0) * 1000, motion=round(motion, 4), view=view_json(view[0]), cmp=cmp)
             if label == prev and label != stable:      # held for two predictions in a row: log it
                 stable = label
                 last = S["events"][0] if S["events"] else None
                 repeat = last and last["label"] == label and now - last["ts"] < 8
-                if label not in ("no clear action", "standing still") and not repeat:
-                    S["events"].appendleft(dict(t=time.strftime("%H:%M:%S"), ts=now, label=label, conf=round(conf, 2)))
+                if name and not repeat:
+                    S["events"].appendleft(dict(t=time.strftime("%H:%M:%S"), ts=now, label=label, conf=round(conf, 2),
+                                                note=S["degrade"]))
                 elif repeat: last["ts"] = now
                 if label in ALERTS: S["alert"], S["alert_t"] = label, now
             if S["alert"] and now - S["alert_t"] > 6: S["alert"] = None
@@ -493,7 +583,7 @@ def model_files():
 
 def settings_dict():
     return dict(source=args.source, model=MODEL_CHOICE, pose=args.pose, window=args.window, threshold=args.threshold,
-                still=args.still, actions=args.actions, sampling=args.sampling)
+                still=args.still, actions=args.actions, sampling=args.sampling, robust=bool(args.robust), compare=args.compare)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -504,7 +594,8 @@ def index(): return (HERE / "dashboard.html").read_text(encoding="utf-8")
 def state():
     with lock:
         d = {k: S[k] for k in ("cam_fps", "pose_fps", "pose_ms", "act_ms", "persons", "label", "conf", "top", "top_all", "alert",
-                               "status", "motion", "busy")}
+                               "status", "motion", "busy", "quality", "cmp", "degrade", "lost")}
+        d["stress"] = dict(STRESS, phases=[dict(p) for p in STRESS["phases"]]) if STRESS["phases"] else None
         d["events"] = list(S["events"])
         rec = S["rec"]
         if rec:
@@ -512,7 +603,7 @@ def state():
             d["rec"] = dict(action=rec["action"], phase=rec["phase"], to_go=round(rec["t_go"] - now, 2), to_stop=round(rec["t_stop"] - now, 2),
                             poses=len(rec["data"]), result=rec.get("result"))
     d.update(source=norm_source(args.source) or "none", model=MODEL_NAME, model_top1=ck.get("cross_subject", {}).get("top1"),
-             n_actions=len(ACTIONS), job=dict(name=JOB["name"], running=bool(JOB["proc"] and JOB["proc"].poll() is None), rc=JOB["rc"]))
+             n_actions=len(ACTIONS), robust=bool(args.robust), conditions=list(robust.CONDITIONS), job=dict(name=JOB["name"], running=bool(JOB["proc"] and JOB["proc"].poll() is None), rc=JOB["rc"]))
     return JSONResponse(d)
 
 
@@ -558,6 +649,12 @@ async def post_settings(req: Request):
         if new.get("pose") in ("lightweight", "balanced", "performance"): args.pose = new["pose"]
         if new.get("sampling") in ("interp", "nearest"): args.sampling = new["sampling"]
         if "source" in new: args.source = norm_source(new["source"])
+        if "robust" in new: args.robust = bool(new["robust"])
+        if "compare" in new and new["compare"] != args.compare:
+            with lock: S["busy"] = "loading the comparison"
+            try: load_compare(new["compare"]); msgs.append("comparison: " + (cmp_name(COMPARE) if COMPARE else "off"))
+            finally:
+                with lock: S["busy"] = ""
         if new.get("model") and new["model"] != MODEL_CHOICE:
             with lock: S["busy"] = f"loading {new['model']}"
             try: load_model(new["model"]); msgs.append(f"model loaded: {MODEL_NAME}")
@@ -625,11 +722,21 @@ async def api_job_run(req: Request):
         cmd = [py, "replay_test.py", "--pkl", pkl, "--checkpoint", ckpt, "--fps", str(r.get("fps", 10)), "--window", str(r.get("window", 3)),
                "--n", str(r.get("n", 1000)), "--jitter", str(r.get("jitter", 0))] + (["--stgcnpp"] if MODEL_CHOICE == "stgcnpp" else [])
     elif name == "ablate": cmd = [py, "ablate.py", "--pkl", pkl, "--checkpoint", ckpt, "--n", str(r.get("n", 1000))]
+    elif name == "robustness":
+        cmd = [py, "robustness_test.py", "--pkl", pkl, "--checkpoint", MODEL_CHOICE, "--n", str(r.get("n", 600)),
+               "--fps", str(r.get("fps", 10)), "--window", str(args.window)]
+        if COMPARE and COMPARE["kind"] != "pipeline": cmd += ["--compare", COMPARE["choice"]]
     else: return JSONResponse(dict(ok=False, msg=f"unknown job {name}"), status_code=400)
     try: run_job(name, cmd)
     except RuntimeError as e: return JSONResponse(dict(ok=False, msg=str(e)), status_code=409)
     if name == "replay": JOB["log"].append(f"(sampling: {args.sampling}; set SAFESENSE_SAMPLING to change it for this test)")
     return dict(ok=True)
+
+
+@app.get("/api/robustness")
+def api_robustness():
+    f = REC_DIR / "robustness.json"
+    return json.loads(f.read_text()) if f.exists() else dict(rows=[])
 
 
 @app.post("/api/jobs/stop")
@@ -642,6 +749,108 @@ def api_job_stop():
 def api_jobs(since: int = 0):
     lines = list(JOB["log"])
     return dict(name=JOB["name"], running=bool(JOB["proc"] and JOB["proc"].poll() is None), rc=JOB["rc"], log=lines[-400:])
+
+
+# ---------------------------------------------------------------- degradation and the live stress test
+@app.post("/api/degrade")
+async def api_degrade(req: Request):
+    """{"condition": name from robust.CONDITIONS} or {"cfg": {...}}: degrade the live pose stream from now on."""
+    r = await req.json()
+    cfg = robust.CONDITIONS.get(r["condition"]) if r.get("condition") else r.get("cfg") or {}
+    if cfg is None: return JSONResponse(dict(ok=False, msg=f"unknown condition {r['condition']}"), status_code=400)
+    DEGRADER.set(cfg)
+    with lock: S["degrade"] = DEGRADER.describe(); S["lost"] = 0
+    return dict(ok=True, degrade=S["degrade"])
+
+
+STRESS = dict(running=False, phase=-1, phases=[], expected="", msg="")
+
+
+def stress_loop(names, settle, measure):
+    """Cycles the injected degradations while the person keeps doing one action, and logs what each line said."""
+    try:
+        for i, name in enumerate(names):
+            if not STRESS["running"]: break
+            DEGRADER.set(robust.CONDITIONS[name])
+            with lock: S["degrade"] = DEGRADER.describe(); STRESS["phase"] = i; STRESS["phases"][i]["state"] = "settling"
+            t_end = time.time() + settle
+            while STRESS["running"] and time.time() < t_end: time.sleep(0.1)
+            with lock: STRESS["phases"][i]["state"] = "measuring"
+            t_end = time.time() + measure
+            while STRESS["running"] and time.time() < t_end:
+                with lock:
+                    ph = STRESS["phases"][i]
+                    ph["main"].append(S["label"]); ph["cmp"].append(S["cmp"]["label"] if S["cmp"] else None)
+                    ph["quality"].append(S["quality"].get("score", 0))
+                time.sleep(args.every)
+            with lock: STRESS["phases"][i]["state"] = "done"; score_stress()
+    finally:
+        DEGRADER.set({})
+        with lock: S["degrade"] = ""; STRESS["running"] = False; STRESS["phase"] = -1; score_stress()
+
+
+def score_stress():
+    """Per phase: the most common answer, and how often each line gave the target (the expected action if one was
+    chosen, else what the main line said most under clean input)."""
+    def majority(v):
+        v = [x for x in v if x in ACTIONS]       # an action, not "no clear action" or "input too degraded"
+        return max(set(v), key=v.count) if v else None
+    phases = STRESS["phases"]
+    target = STRESS["expected"] or (majority(phases[0]["main"]) if phases and phases[0]["main"] else None)
+    STRESS["target"] = target
+    for ph in phases:
+        for k in ("main", "cmp"):
+            v = ph[k]; ph[k + "_top"] = majority(v)
+            ph[k + "_hit"] = round(sum(x == target for x in v) / len(v), 2) if v and target else None
+        ph["q"] = round(float(np.mean(ph["quality"]))) if ph["quality"] else None
+
+
+@app.post("/api/stress")
+async def api_stress(req: Request):
+    r = await req.json()
+    if r.get("stop"): STRESS["running"] = False; return dict(ok=True)
+    if STRESS["running"]: return JSONResponse(dict(ok=False, msg="a stress test is already running"), status_code=409)
+    names = [n for n in r.get("conditions") or list(robust.CONDITIONS) if n in robust.CONDITIONS]
+    if names[0] != "clean": names = ["clean"] + names
+    settle = float(r.get("settle", max(2.0, 0.7 * args.window))); measure = float(r.get("measure", 3.0))
+    with lock:
+        STRESS.update(running=True, phase=0, expected=r.get("expected") or "", settle=settle, measure=measure,
+                      phases=[dict(name=n, state="waiting", main=[], cmp=[], quality=[]) for n in names])
+    threading.Thread(target=stress_loop, args=(names, settle, measure), daemon=True).start()
+    return dict(ok=True, seconds=round(len(names) * (settle + measure)))
+
+
+# ---------------------------------------------------------------- finding the phone
+def probe(ip, port, timeout=0.4):
+    try:
+        with socket.create_connection((ip, port), timeout=timeout): pass
+    except OSError: return None
+    import urllib.request
+    info = dict(ip=ip, port=port, address=f"{ip}:{port}", app="")
+    try:
+        with urllib.request.urlopen(f"http://{ip}:{port}/status.json", timeout=1.5) as r:
+            j = json.loads(r.read().decode("utf-8", "replace") or "{}")
+            info["app"] = "SafeSense Cam" if "viewers" in j or "fps" in j else "camera app"; info["status"] = j
+    except Exception:
+        try:
+            with urllib.request.urlopen(f"http://{ip}:{port}/shot.jpg", timeout=1.5) as r:
+                if r.headers.get("Content-Type", "").startswith("image"): info["app"] = "IP camera"
+        except Exception: pass
+    return info if info["app"] else None
+
+
+@app.get("/api/find_camera")
+def api_find_camera(port: int = 8080):
+    """Scan this laptop's local networks (/24 around each address) for a phone camera app on `port`."""
+    from concurrent.futures import ThreadPoolExecutor
+    ips = [i for i in local_ips() if not i.startswith("127.")]
+    cands = []
+    for ip in ips:
+        base = ".".join(ip.split(".")[:3])
+        cands += [f"{base}.{k}" for k in range(1, 255) if f"{base}.{k}" != ip]
+    with ThreadPoolExecutor(64) as ex: found = [f for f in ex.map(lambda a: probe(a, port), cands) if f]
+    found.sort(key=lambda f: f["app"] != "SafeSense Cam")
+    return dict(found=found, laptop_ips=ips, scanned=len(cands))
 
 
 @app.get("/api/ping")

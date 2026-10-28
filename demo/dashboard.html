@@ -9,41 +9,57 @@
           --alert:#c62828; --alert-soft:#fdecea; --ok:#2e7d32; --ok-soft:#e8f5e9; --warn:#b26a00; --warn-soft:#fff4e0; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font-family:Arial, Helvetica, sans-serif; }
-  header { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; padding:12px 22px; background:var(--card); border-bottom:3px solid var(--accent); }
+  header { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; padding:10px 22px; background:var(--card); border-bottom:3px solid var(--accent); }
   header h1 { margin:0; font-size:21px; color:var(--accent); letter-spacing:.3px; }
   .pills { display:flex; flex-wrap:wrap; gap:8px; font-size:12px; }
-  .pill { background:var(--accent-soft); color:var(--accent); border-radius:12px; padding:4px 10px; max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pill { background:var(--accent-soft); color:var(--accent); border-radius:12px; padding:4px 10px; max-width:380px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .pill.bad { background:var(--alert-soft); color:var(--alert); } .pill.good { background:var(--ok-soft); color:var(--ok); } .pill.busy { background:var(--warn-soft); color:var(--warn); }
   nav { display:flex; gap:4px; padding:0 22px; background:var(--card); border-bottom:1px solid var(--line); }
   nav button { border:none; border-bottom:3px solid transparent; background:none; padding:11px 16px; font-size:14px; color:var(--muted); cursor:pointer; border-radius:0; }
   nav button.on { color:var(--accent); border-bottom-color:var(--accent); font-weight:bold; }
-  section { display:none; padding:18px 22px; } section.on { display:block; }
-  .grid2 { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr); gap:18px; }
-  .grid3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:18px; margin-top:18px; }
+  section { display:none; padding:16px 22px; } section.on { display:block; }
+  .grid2 { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr); gap:16px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px; margin-top:16px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
   .video { padding:0; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#111; min-height:300px; position:relative; }
   .video img { width:100%; height:auto; display:block; }
   .side { display:flex; flex-direction:column; gap:14px; }
-  h3, .label-title { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:0 0 8px; font-weight:normal; }
-  #label { font-size:34px; font-weight:bold; line-height:1.15; }
-  #conf { margin-top:6px; color:var(--muted); font-size:14px; }
-  .bar { display:grid; grid-template-columns:minmax(0,160px) 1fr 46px; gap:8px; align-items:center; font-size:13px; margin:7px 0; }
+  h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:0 0 8px; font-weight:normal; }
+  #label { font-size:38px; font-weight:bold; line-height:1.1; }
+  #conf { margin-top:4px; color:var(--muted); font-size:14px; min-height:17px; }
+  #cmp { margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); font-size:15px; display:none; }
+  #cmp .who { color:var(--muted); font-size:12px; }
+  .bar { display:grid; grid-template-columns:minmax(0,150px) 1fr 50px; gap:8px; align-items:center; font-size:13px; margin:6px 0; }
   .bar .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .track { height:10px; background:var(--accent-soft); border-radius:5px; overflow:hidden; }
   .fill { height:100%; background:var(--accent); width:0; transition:width .2s; }
   .bar .val { text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
-  #alert { display:none; background:var(--alert-soft); border:2px solid var(--alert); color:var(--alert); font-weight:bold; font-size:22px; text-align:center; padding:14px; border-radius:10px; animation:pulse 1s infinite; }
+  .quality { display:flex; align-items:baseline; gap:12px; }
+  #qLevel { font-size:26px; font-weight:bold; }
+  #qScore { color:var(--muted); }
+  .q-good { color:var(--ok); } .q-fair { color:var(--warn); } .q-poor { color:var(--alert); }
+  .fill.good { background:var(--ok); } .fill.fair { background:var(--warn); } .fill.poor { background:var(--alert); }
+  #alert { display:none; background:var(--alert-soft); border:2px solid var(--alert); color:var(--alert); font-weight:bold; font-size:22px; text-align:center; padding:12px; border-radius:10px; animation:pulse 1s infinite; }
   @keyframes pulse { 50% { opacity:.65; } }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { border:1px solid var(--line); background:var(--card); border-radius:16px; padding:7px 13px; cursor:pointer; font-size:13px; color:var(--ink); }
+  .chip.on { background:var(--alert); border-color:var(--alert); color:#fff; }
+  .chip.clean.on { background:var(--ok); border-color:var(--ok); }
+  .switch { display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
+  .switch .knob { width:44px; height:24px; border-radius:12px; background:#c3ccd6; position:relative; transition:background .2s; flex:none; }
+  .switch .knob::after { content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .2s; }
+  .switch.on .knob { background:var(--ok); } .switch.on .knob::after { left:23px; }
   ul.list { list-style:none; margin:0; padding:0; max-height:220px; overflow:auto; font-size:14px; }
-  ul.list li { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); }
+  ul.list li { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); gap:8px; }
   ul.list li.warn { color:var(--alert); font-weight:bold; }
   .time { color:var(--muted); font-variant-numeric:tabular-nums; margin-right:10px; }
   .stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
   .stat { background:var(--bg); border-radius:8px; padding:8px 10px; }
   .stat .k { font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); }
   .stat .v { font-size:19px; font-weight:bold; margin-top:3px; font-variant-numeric:tabular-nums; }
-  button, .btn { border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:6px; padding:7px 14px; cursor:pointer; font-size:13px; }
+  button { border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:6px; padding:7px 14px; cursor:pointer; font-size:13px; }
   button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.big { font-size:15px; padding:10px 18px; }
   button.danger { color:var(--alert); border-color:var(--alert); }
   button:disabled { opacity:.5; cursor:default; }
   button.small { padding:3px 9px; font-size:12px; color:var(--muted); }
@@ -53,7 +69,7 @@
   input[type=text], input[type=number], select, textarea { font:inherit; font-size:14px; padding:7px 9px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink); }
   input[type=number] { width:90px; }
   .field { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
-  .help { font-size:12px; color:var(--muted); }
+  .help { font-size:12px; color:var(--muted); line-height:1.4; }
   .msg { font-size:13px; padding:9px 11px; border-radius:6px; margin-top:8px; display:none; }
   .msg.good { display:block; background:var(--ok-soft); color:var(--ok); } .msg.bad { display:block; background:var(--alert-soft); color:var(--alert); } .msg.info { display:block; background:var(--accent-soft); color:var(--accent); }
   canvas.skel { width:100%; aspect-ratio:1/1; background:#fafbfc; border:1px solid var(--line); border-radius:8px; display:block; }
@@ -61,51 +77,108 @@
   .acts label { display:flex; gap:7px; align-items:center; color:var(--ink); padding:3px 0; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th { text-align:left; font-weight:normal; color:var(--muted); font-size:12px; border-bottom:1px solid var(--line); padding:6px; }
-  td { border-bottom:1px solid var(--line); padding:7px 6px; vertical-align:top; }
-  tr.sel td { background:var(--accent-soft); } tbody tr { cursor:pointer; }
+  td { border-bottom:1px solid var(--line); padding:6px; vertical-align:top; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tr.sel td { background:var(--accent-soft); } #results tr { cursor:pointer; }
+  tr.cur td { background:var(--warn-soft); }
   .tag { display:inline-block; border-radius:10px; padding:2px 8px; font-size:12px; }
-  .tag.recognised { background:var(--ok-soft); color:var(--ok); } .tag.sometimes { background:var(--warn-soft); color:var(--warn); }
+  .tag.recognised, .tag.ok { background:var(--ok-soft); color:var(--ok); } .tag.sometimes { background:var(--warn-soft); color:var(--warn); }
   .tag.missed, .tag.no { background:var(--alert-soft); color:var(--alert); }
   .hints { margin:6px 0 0; padding-left:18px; color:var(--warn); font-size:12px; }
   pre.log { background:#10161d; color:#d6e2ee; border-radius:8px; padding:12px; height:420px; overflow:auto; font-size:12px; white-space:pre-wrap; margin:0; }
+  details > summary { cursor:pointer; color:var(--accent); font-size:14px; padding:6px 0; }
+  .setup { border:2px solid var(--accent); margin-bottom:16px; }
+  .setup ol { margin:6px 0 12px; padding-left:20px; line-height:1.7; font-size:14px; }
+  .found { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+  .found button { text-align:left; }
   #overlay { display:none; position:fixed; inset:0; background:rgba(16,22,29,.55); z-index:10; align-items:center; justify-content:center; flex-direction:column; color:#fff; text-align:center; pointer-events:none; }
   #overlay .act { font-size:min(7vw, 64px); font-weight:bold; text-shadow:0 2px 8px #000; }
   #overlay .big { font-size:min(30vw, 260px); font-weight:bold; line-height:1; text-shadow:0 4px 16px #000; }
   #overlay .sub { font-size:min(4vw, 30px); text-shadow:0 2px 8px #000; }
   #overlay.go .big { color:#7CFC9A; } #overlay.stop .big { color:#ff8a80; } #overlay.count .big { color:#ffd166; }
-  @media (max-width: 960px) { .grid2, .grid3 { grid-template-columns:1fr; } }
+  @media (max-width: 960px) { .grid2, .grid3 { grid-template-columns:1fr; } header, nav, section { padding-left:16px; padding-right:16px; } }
 </style>
 </head>
 <body>
 <header>
   <h1>SafeSense Live</h1>
   <div class="pills">
-    <span class="pill" id="pModel">model</span><span class="pill" id="pSource">camera</span>
-    <span class="pill" id="pStatus">connecting</span><span class="pill busy" id="pBusy" style="display:none"></span>
+    <span class="pill" id="pCam">camera</span><span class="pill" id="pModel">model</span>
+    <span class="pill busy" id="pBusy" style="display:none"></span>
   </div>
 </header>
 <nav>
-  <button data-tab="live" class="on">Live</button><button data-tab="record">Record and check</button>
-  <button data-tab="tests">Tests</button><button data-tab="settings">Settings</button>
+  <button data-tab="demo" class="on">Demo</button><button data-tab="setup">Setup</button>
+  <button data-tab="record">Record and check</button><button data-tab="tests">Tests</button>
 </nav>
 
-<!-- ------------------------------------------------------------ Live -->
-<section id="live" class="on">
+<!-- ------------------------------------------------------------ Demo -->
+<section id="demo" class="on">
+  <div class="card setup" id="setupCard" style="display:none">
+    <h3>Connect the phone camera</h3>
+    <ol>
+      <li>Open <b>SafeSense Cam</b> on the phone (or any IP camera app on port 8080).</li>
+      <li>Put the laptop on the same Wi-Fi as the phone, or on the phone's hotspot.</li>
+      <li>Press <b>Find my phone</b>, then pick it.</li>
+    </ol>
+    <div class="row"><button class="primary big" id="btnFind" onclick="findPhone()">Find my phone</button>
+      <span class="help">or type the address the app shows:</span>
+      <input type="text" id="qAddr" placeholder="192.168.1.23:8080" style="width:190px"><button onclick="useAddr($('qAddr').value)">Use</button>
+      <button class="small" onclick="useAddr('mock')">No phone: test skeleton</button></div>
+    <div class="found" id="found"></div>
+    <div class="msg" id="findMsg"></div>
+  </div>
+
   <div class="grid2">
-    <div class="card video"><img class="cam" src="/stream.mjpg" alt="Live camera with detected skeleton"></div>
+    <div>
+      <div class="card video"><img class="cam" src="/stream.mjpg" alt="Live camera with detected skeleton"></div>
+      <div class="card" style="margin-top:16px">
+        <div class="row between"><h3 style="margin:0">Stress the input</h3>
+          <span class="help">Damages the pose stream on purpose, the way a bad camera, occlusion or a slow network would.</span></div>
+        <div class="chips" id="chips" style="margin-top:10px"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="primary" id="btnStress" onclick="startStress()">Run automatic stress test</button>
+          <button class="danger" id="btnStressStop" onclick="post('/api/stress', {stop:true})" style="display:none">Stop</button>
+          <label>action you will do <select id="stExpected"><option value="">(whatever it sees under clean input)</option></select></label>
+        </div>
+        <div class="help" id="stressHelp">Keep doing one action (for example hand waving) the whole time. Each condition runs for a few seconds; the table shows how often each line still gave the right answer.</div>
+        <div id="stressBox" style="display:none; margin-top:10px">
+          <table><thead><tr><th>Condition</th><th class="num">Input quality</th><th>SafeSense says</th><th class="num">right</th><th id="stCmpHead">Without pipeline</th><th class="num">right</th></tr></thead><tbody id="stressRows"></tbody></table>
+          <div class="help" id="stressNote" style="margin-top:6px"></div>
+        </div>
+      </div>
+    </div>
     <div class="side">
       <div id="alert">ALERT: <span id="alertText"></span> detected</div>
-      <div class="card"><div class="label-title">Current action</div><div id="label">starting</div><div id="conf">&nbsp;</div></div>
-      <div class="card"><div class="label-title">Confidence (top 5 of the <span id="nActs">-</span> demo actions)</div><div id="bars"></div></div>
-      <div class="card"><div class="row between"><div class="label-title">Recent actions</div><button class="small" onclick="post('/clear')">Clear</button></div><ul class="list" id="events"></ul></div>
+      <div class="card">
+        <h3>SafeSense recognises</h3>
+        <div id="label">starting</div><div id="conf">&nbsp;</div>
+        <div id="cmp"><div class="who" id="cmpWho"></div><div id="cmpLabel"></div></div>
+      </div>
+      <div class="card">
+        <div class="row between"><h3 style="margin:0">Input quality right now</h3><span class="help" id="qInjected"></span></div>
+        <div class="quality" style="margin-top:6px"><span id="qLevel">-</span><span id="qScore"></span></div>
+        <div id="qBars" style="margin-top:6px"></div>
+        <div class="help" id="qNote"></div>
+      </div>
+      <div class="card">
+        <div class="switch" id="robustSw" onclick="toggleRobust()"><span class="knob"></span><span><b>Robust pipeline</b> <span class="help" id="robustTxt"></span></span></div>
+        <div class="help" style="margin-top:8px">Drops joints the pose model is unsure of instead of trusting a guess, rejects glitches, fills short gaps in time, and says "input too degraded" rather than guessing when too little is left.</div>
+      </div>
+      <div class="card" id="measuredCard">
+        <h3>Measured on NTU-120 test clips</h3>
+        <div id="measured" class="help">Not measured yet. Run <b>Tests &gt; Robustness test</b> once: it replays real NTU test clips through this exact pipeline under every condition above.</div>
+      </div>
     </div>
   </div>
+
+  <details style="margin-top:16px"><summary>More detail: top guesses, what the model sees, speed</summary>
   <div class="grid3">
-    <div class="card"><h3>What the model sees (last window, slowed to 3 s)</h3><canvas class="skel" id="cvLive" width="360" height="360"></canvas>
-      <div class="help">Your main body after the same normalising as in training: centred on the hips, scaled by the torso.</div></div>
-    <div class="card"><h3>Top 5 of all 120 NTU actions</h3><div id="barsAll"></div>
-      <div class="help">Unrestricted model output. If the right action shows here but not on the left, it is outside the demo list.</div></div>
-    <div class="card"><h3>Pipeline</h3>
+    <div class="card"><h3>Top 5 of the <span id="nActs">-</span> demo actions</h3><div id="bars"></div>
+      <h3 style="margin-top:14px">Recent actions</h3><ul class="list" id="events"></ul><button class="small" style="margin-top:6px" onclick="post('/clear')">Clear</button></div>
+    <div class="card"><h3>What the model sees (last window, slowed down)</h3><canvas class="skel" id="cvLive" width="360" height="360"></canvas>
+      <div class="help">The main person after the robust pipeline and the same normalising as in training. Missing joints are not drawn.</div></div>
+    <div class="card"><h3>Speed</h3>
       <div class="stats">
         <div class="stat"><div class="k">Camera FPS</div><div class="v" id="camfps">-</div></div>
         <div class="stat"><div class="k">Pose FPS</div><div class="v" id="posefps">-</div></div>
@@ -114,7 +187,47 @@
         <div class="stat"><div class="k">People</div><div class="v" id="persons">-</div></div>
         <div class="stat"><div class="k">Movement</div><div class="v" id="motion">-</div></div>
       </div>
-      <div class="help" style="margin-top:10px">Movement is how far your limbs travel in the window, in torso lengths: about 0.1 standing still, 0.3 or more when moving.</div>
+      <h3 style="margin-top:14px">Top 5 of all 120 NTU actions</h3><div id="barsAll"></div></div>
+  </div>
+  </details>
+</section>
+
+<!-- ------------------------------------------------------------ Setup -->
+<section id="setup">
+  <div class="grid2">
+    <div class="card">
+      <h3>Camera</h3>
+      <div class="row"><button class="primary" onclick="findPhone('setFound')">Find my phone</button><span class="help">Laptop addresses: <span id="ips">-</span></span></div>
+      <div class="found" id="setFound"></div>
+      <div class="field" style="margin-top:14px"><label>Or type the phone's address, a webcam number, or a video file</label>
+        <div class="row"><input type="text" id="sSource" style="flex:1; min-width:220px" placeholder="192.168.1.23:8080">
+          <button onclick="testCam()">Test</button><button class="primary" onclick="useAddr($('sSource').value)">Use</button></div>
+        <div class="row" style="margin-top:4px"><button class="small" onclick="useAddr('0')">Laptop webcam</button><button class="small" onclick="useAddr('mock')">Test skeleton (no camera)</button></div>
+        <div class="msg" id="camMsg"></div></div>
+      <h3 style="margin-top:18px">Models</h3>
+      <div class="field"><label>Action model</label><select id="sModel"></select>
+        <div class="help">Any .pt model file in the live-demo folder is listed.</div></div>
+      <div class="field"><label>Comparison line on the Demo page</label><select id="sCompare"></select>
+        <div class="help">Runs on exactly the same poses. "Same model without the robust pipeline" shows what the pipeline adds.</div></div>
+      <div class="field"><label>Pose model</label><select id="sPose"><option value="lightweight">lightweight (fastest)</option><option value="balanced">balanced (more accurate, slower)</option><option value="performance">performance (most accurate, slowest)</option></select></div>
+      <div class="row"><button class="primary" onclick="saveSettings()">Save and apply</button></div>
+      <div class="msg" id="setMsg"></div>
+    </div>
+    <div class="card">
+      <details><summary>Advanced recognition settings</summary>
+      <div class="row" style="margin-top:10px">
+        <div class="field"><label>Window (s)</label><input type="number" id="sWindow" step="0.5" min="1"></div>
+        <div class="field"><label>Confidence to show</label><input type="number" id="sThreshold" step="0.05" min="0" max="1"></div>
+        <div class="field"><label>Still below</label><input type="number" id="sStill" step="0.02" min="0"></div>
+        <div class="field"><label>Frame sampling</label><select id="sSampling"><option value="interp">interpolate (low FPS)</option><option value="nearest">nearest frame (30 FPS)</option></select></div>
+      </div>
+      <div class="field"><label>Actions the demo chooses from</label>
+        <label><input type="radio" name="aMode" value="default"> best 37 single-person actions (default)</label>
+        <label><input type="radio" name="aMode" value="all"> all 120</label>
+        <label><input type="radio" name="aMode" value="custom"> custom (comma-separated NTU names)</label>
+        <textarea id="sActions" rows="3"></textarea></div>
+      <div class="row"><button class="primary" onclick="saveSettings()">Save and apply</button></div>
+      </details>
     </div>
   </div>
 </section>
@@ -125,11 +238,11 @@
     <div class="card video"><img class="cam" alt="Live camera"></div>
     <div class="card">
       <h3>Record yourself doing actions</h3>
-      <div class="help" style="margin-bottom:10px">Each action is recorded through the live pipeline, then scored by the model and compared with how the NTU people do it. A voice and a big countdown tell you when to start and stop, so you can stand back from the laptop.</div>
+      <div class="help" style="margin-bottom:10px">Practice before the demo. Each action is recorded through the live pipeline, scored, and compared with how the NTU people do it. A voice and a big countdown tell you when to start and stop.</div>
       <div class="row between"><label>Actions</label><span><button class="small" onclick="pickActs('ten')">Suggested 10</button> <button class="small" onclick="pickActs('none')">None</button> <label><input type="checkbox" id="showAll" onchange="renderActs()"> show all 120</label></span></div>
       <div class="acts" id="acts"></div>
       <div class="row" style="margin-top:12px">
-        <label>Countdown <input type="number" id="cd" value="4" min="1" max="20"> s</label>
+        <label>Countdown <input type="number" id="cd" value="5" min="1" max="20"> s</label>
         <label>Record for <input type="number" id="secs" value="6" min="3" max="20"> s</label>
         <label><input type="checkbox" id="voice" checked> voice</label>
       </div>
@@ -141,7 +254,7 @@
       </div>
     </div>
   </div>
-  <div class="card" style="margin-top:18px">
+  <div class="card" style="margin-top:16px">
     <div class="row between"><h3>Results</h3><span><span class="help" id="refInfo"></span> <button class="small" onclick="rescore()">Re-score with current model</button></span></div>
     <table><thead><tr><th>Action</th><th>Result</th><th>Model's top guess</th><th>Right action</th><th>Your movement / NTU</th><th>Joints seen</th><th>Height in frame</th><th>NTU accuracy</th><th></th></tr></thead>
       <tbody id="results"><tr><td colspan="9" class="help">No recordings yet.</td></tr></tbody></table>
@@ -158,61 +271,32 @@
 <section id="tests">
   <div class="grid2">
     <div class="card">
-      <h3>NTU test runs</h3>
+      <h3>Tests on real NTU-120 test clips</h3>
       <div class="field"><label>NTU-120 file</label><input type="text" id="pkl" value="data/ntu120_hrnet.pkl"></div>
-      <div class="field"><label>1. NTU reference for Record and check (once per model, a few minutes)</label>
-        <div class="row"><button class="primary" onclick="job('prepare')">Prepare NTU reference</button><span class="help" id="refInfo2"></span></div></div>
-      <div class="field"><label>2. Replay test: real NTU test clips through the live code</label>
-        <div class="row">
-          <label>pose FPS <input type="number" id="rFps" value="10" step="1"></label>
-          <label>window s <input type="number" id="rWin" value="3" step="0.5"></label>
-          <label>clips <input type="number" id="rN" value="1000" step="100"></label>
-          <label>jitter px <input type="number" id="rJit" value="0" step="1"></label>
-          <button onclick="job('replay')">Run</button>
-        </div>
-        <div class="help">Compares the live code with the offline evaluation on the same clips. Set pose FPS to what the Live tab shows.</div></div>
-      <div class="field"><label>3. Step-by-step check of the live code (whole clips, 30 FPS)</label>
-        <div class="row"><button onclick="job('ablate')">Run</button></div></div>
+      <div class="field"><label><b>Robustness test</b>: every stress condition, robust pipeline on and off (a few minutes)</label>
+        <div class="row"><label>clips <input type="number" id="bN" value="600" step="100"></label>
+          <label>pose FPS <input type="number" id="bFps" value="10" step="1"></label>
+          <button class="primary" onclick="job('robustness')">Run</button></div>
+        <div class="help">The result appears on the Demo page, so the live demo is backed by measured numbers. If a comparison model is chosen in Setup, it is measured too.</div></div>
+      <div class="field"><label>NTU reference for Record and check (once per model)</label>
+        <div class="row"><button onclick="job('prepare')">Prepare NTU reference</button><span class="help" id="refInfo2"></span></div></div>
+      <details><summary>Pipeline checks</summary>
+        <div class="field" style="margin-top:8px"><label>Replay test: NTU test clips through the live code</label>
+          <div class="row">
+            <label>pose FPS <input type="number" id="rFps" value="10" step="1"></label>
+            <label>window s <input type="number" id="rWin" value="3" step="0.5"></label>
+            <label>clips <input type="number" id="rN" value="1000" step="100"></label>
+            <label>jitter px <input type="number" id="rJit" value="0" step="1"></label>
+            <button onclick="job('replay')">Run</button>
+          </div></div>
+        <div class="field"><label>Step-by-step check of the live code (whole clips, 30 FPS)</label>
+          <div class="row"><button onclick="job('ablate')">Run</button></div></div>
+      </details>
       <div class="msg" id="jobMsg"></div>
     </div>
     <div class="card">
       <div class="row between"><h3>Output <span id="jobName"></span></h3><button class="small danger" onclick="post('/api/jobs/stop')">Stop</button></div>
       <pre class="log" id="log">Nothing run yet.</pre>
-    </div>
-  </div>
-</section>
-
-<!-- ------------------------------------------------------------ Settings -->
-<section id="settings">
-  <div class="grid2">
-    <div class="card">
-      <h3>Camera</h3>
-      <div class="field"><label>Phone address (IP Webcam), webcam number, or video file</label>
-        <div class="row"><input type="text" id="sSource" style="flex:1; min-width:240px" placeholder="http://192.168.1.23:8080">
-          <button onclick="testCam()">Test</button></div>
-        <div class="row" style="margin-top:4px"><button class="small" onclick="setSrc('0')">Laptop webcam</button><button class="small" onclick="setSrc('mock')">Test skeleton (no camera)</button></div>
-        <div class="help">Type the address IP Webcam shows at the bottom of the phone screen; /video is added for you. Laptop addresses: <span id="ips">-</span></div>
-        <div class="msg" id="camMsg"></div></div>
-      <h3 style="margin-top:20px">Model</h3>
-      <div class="field"><label>Action model</label><select id="sModel"></select>
-        <div class="help">Any .pt model file in the live-demo folder is listed here.</div></div>
-      <div class="field"><label>Pose model</label><select id="sPose"><option value="lightweight">lightweight (fastest)</option><option value="balanced">balanced (more accurate, slower)</option><option value="performance">performance (most accurate, slowest)</option></select></div>
-    </div>
-    <div class="card">
-      <h3>Recognition</h3>
-      <div class="row">
-        <div class="field"><label>Window (s)</label><input type="number" id="sWindow" step="0.5" min="1"></div>
-        <div class="field"><label>Confidence to show</label><input type="number" id="sThreshold" step="0.05" min="0" max="1"></div>
-        <div class="field"><label>Still below</label><input type="number" id="sStill" step="0.02" min="0"></div>
-        <div class="field"><label>Frame sampling</label><select id="sSampling"><option value="interp">interpolate (low FPS)</option><option value="nearest">nearest frame (30 FPS)</option></select></div>
-      </div>
-      <div class="field"><label>Actions the live view chooses from</label>
-        <label><input type="radio" name="aMode" value="default"> best 37 single-person actions (default)</label>
-        <label><input type="radio" name="aMode" value="all"> all 120</label>
-        <label><input type="radio" name="aMode" value="custom"> custom (comma-separated NTU names)</label>
-        <textarea id="sActions" rows="3"></textarea></div>
-      <div class="row"><button class="primary" onclick="saveSettings()">Save and apply</button></div>
-      <div class="msg" id="setMsg"></div>
     </div>
   </div>
 </section>
@@ -224,25 +308,27 @@ const $ = id => document.getElementById(id);
 const ALERTS = new Set(["falling", "staggering"]);
 const SUGGESTED = ["arm swings", "nod head/bow", "salute", "touch chest (stomachache/heart pain)", "hand waving", "clapping", "jump up", "squat down", "arm circles", "cross arms"];
 const EDGES = [[0,1],[0,2],[1,3],[2,4],[0,5],[0,6],[5,7],[7,9],[6,8],[8,10],[5,11],[6,12],[11,13],[13,15],[12,14],[14,16],[5,6],[11,12]];
+const COND_TEXT = {"clean": "Clean input", "right arm hidden": "Hide right arm", "legs hidden": "Hide legs", "noise": "Sensor noise",
+                   "50% frames lost": "Lose 50% of frames", "5 fps": "Drop to 5 fps", "composite": "All at once"};
 const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const pct = v => (v * 100).toFixed(0) + "%";
 async function post(url, body) { const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body || {})}); return r.json(); }
 const getj = async url => (await fetch(url, {cache:"no-store"})).json();
-function bars(list) { return list.map(([n, v]) => `<div class="bar"><span class="name" title="${esc(n)}">${esc(cap(n))}</span><div class="track"><div class="fill" style="width:${(v*100).toFixed(1)}%"></div></div><span class="val">${pct(v)}</span></div>`).join(""); }
+function bars(list, cls) { return list.map(([n, v, t]) => `<div class="bar"><span class="name" title="${esc(n)}">${esc(cap(n))}</span><div class="track"><div class="fill ${cls || ""}" style="width:${(Math.min(v, 1)*100).toFixed(1)}%"></div></div><span class="val">${t ?? pct(v)}</span></div>`).join(""); }
 function msg(id, text, kind) { const e = $(id); e.textContent = text; e.className = "msg " + (kind || "info"); }
 
 // ---------------- tabs (one camera stream at a time)
-let tab = "live";
+let tab = "demo";
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
 function showTab(t) {
   tab = t;
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
   document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === t));
   document.querySelectorAll("img.cam").forEach(img => { const want = img.closest("section").id === t; if (want && !img.src.includes("stream")) img.src = "/stream.mjpg?" + Date.now(); if (!want) img.removeAttribute("src"); });
-  if (t === "record") loadResults();
-  if (t === "settings") loadSettings();
-  if (t === "tests") loadResults();
+  if (t === "record" || t === "tests") loadResults();
+  if (t === "setup") loadSettings();
+  if (t === "demo") loadMeasured();
 }
 
 // ---------------- skeleton player
@@ -256,42 +342,135 @@ function drawSkel(cv, frame) {
   for (const [a, b] of EDGES) if (ok(a) && ok(b)) { const [x1, y1] = P(a), [x2, y2] = P(b); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
   for (let j = 0; j < 17; j++) if (ok(j)) { const [x, y] = P(j); g.fillStyle = (j === 9 || j === 10) ? "#c62828" : "#1b2430"; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); }
 }
-const players = {};   // canvas id -> frames
+const players = {};
 function play(id, frames) { players[id] = frames; }
 let pf = 0;
 setInterval(() => { pf = (pf + 1) % 48; for (const [id, fr] of Object.entries(players)) drawSkel($(id), fr ? fr[pf] : null); }, 1000 / 16);
 
+// ---------------- camera setup
+let camOk = false, findRunning = false;
+async function findPhone(target) {
+  target = target || "found"; if (findRunning) return; findRunning = true;
+  const box = $(target); box.innerHTML = `<div class="help">Looking for the phone on this laptop's networks...</div>`;
+  if ($("btnFind")) $("btnFind").disabled = true;
+  try {
+    const r = await getj("/api/find_camera");
+    if (r.found.length) box.innerHTML = r.found.map(f => `<button onclick="useAddr('${esc(f.address)}')"><b>Use ${esc(f.address)}</b> <span class="help">${esc(f.app)}</span></button>`).join("");
+    else box.innerHTML = `<div class="msg bad" style="display:block">No camera app found on ${r.laptop_ips.length ? "the network of " + esc(r.laptop_ips.join(", ")) : "any network (is the laptop on Wi-Fi?)"}. Check the app is open on the phone and both are on the same Wi-Fi or the phone's hotspot. Some college and office Wi-Fi blocks devices from seeing each other: the phone's hotspot always works.</div>`;
+    if (r.found.length === 1 && !camOk) useAddr(r.found[0].address);
+  } catch (e) { box.innerHTML = `<div class="help">Search failed: ${esc(e)}</div>`; }
+  findRunning = false; if ($("btnFind")) $("btnFind").disabled = false;
+}
+async function useAddr(a) {
+  if (!String(a).trim()) return;
+  const m = tab === "setup" ? "camMsg" : "findMsg";
+  msg(m, `Connecting to ${a}...`, "info");
+  const t = await getj("/api/camera_test?source=" + encodeURIComponent(a));
+  if (!t.ok) { msg(m, t.msg, "bad"); return; }
+  const r = await post("/api/settings", {source: a});
+  msg(m, r.ok ? t.msg + " Saved: it is used from now on." : r.msg, r.ok ? "good" : "bad");
+  if (tab === "setup") $("sSource").value = a;
+}
+async function testCam() {
+  msg("camMsg", "Testing...", "info");
+  const r = await getj("/api/camera_test?source=" + encodeURIComponent($("sSource").value));
+  msg("camMsg", r.msg + (r.ok ? " Press Use to switch to it." : ""), r.ok ? "good" : "bad");
+  $("ips").textContent = (r.laptop_ips || []).join(", ") || "unknown";
+}
+
+// ---------------- degradation and the stress test
+let conditions = [], curCond = "clean", stressOn = false;
+function renderChips() {
+  $("chips").innerHTML = conditions.map(c => `<button class="chip ${c === "clean" ? "clean" : ""} ${c === curCond ? "on" : ""}" ${stressOn ? "disabled" : ""} onclick="setCond('${esc(c)}')">${esc(COND_TEXT[c] || cap(c))}</button>`).join("");
+}
+async function setCond(c) { curCond = c; renderChips(); await post("/api/degrade", {condition: c}); }
+async function startStress() {
+  const r = await post("/api/stress", {expected: $("stExpected").value});
+  if (!r.ok) { $("stressHelp").textContent = r.msg; return; }
+  try { actx = actx || new AudioContext(); actx.resume(); } catch (e) {}
+  say(`Stress test. Keep doing the action for about ${r.seconds} seconds.`, true);
+}
+let lastPhase = -2;
+function renderStress(st, s) {
+  const was = stressOn; stressOn = !!(st && st.running);
+  $("btnStress").style.display = stressOn ? "none" : ""; $("btnStressStop").style.display = stressOn ? "" : "none";
+  if (was !== stressOn) { if (!stressOn) { curCond = "clean"; if (was) { beep(440, 300); say("Stress test done.", true); } } renderChips(); }
+  if (!st) return;
+  if (stressOn && st.phase !== lastPhase) { lastPhase = st.phase; curCond = st.phases[st.phase].name; renderChips(); beep(800, 120); }
+  $("stressBox").style.display = "";
+  $("stCmpHead").textContent = s.cmp ? s.cmp.name : "Comparison";
+  const hit = v => v === null || v === undefined ? "-" : `<span class="tag ${v >= .7 ? "ok" : v >= .4 ? "sometimes" : "no"}">${pct(v)}</span>`;
+  $("stressRows").innerHTML = st.phases.map((p, i) => `<tr class="${stressOn && i === st.phase ? "cur" : ""}"><td>${esc(COND_TEXT[p.name] || p.name)}${p.state === "settling" || p.state === "measuring" ? ` <span class="help">${p.state}</span>` : ""}</td>
+    <td class="num">${p.q ?? "-"}</td><td>${esc(cap(p.main_top || "-"))}</td><td class="num">${hit(p.main_hit)}</td><td>${esc(cap(p.cmp_top || "-"))}</td><td class="num">${hit(p.cmp_hit)}</td></tr>`).join("");
+  $("stressNote").textContent = st.target ? `"Right" means the line said ${cap(st.target)}${st.expected ? " (the action you chose)" : " (what SafeSense said under clean input)"}. Share of predictions while each condition ran.` : (stressOn ? "" : "No action was recognised under clean input, so nothing to compare against. Choose the action you will do and run it again.");
+}
+async function loadMeasured() {
+  try {
+    const d = await getj("/api/robustness"); if (!d.rows || !d.rows.length) return;
+    const by = {}; for (const r of d.rows) { by[r.condition] = by[r.condition] || {}; by[r.condition][r.slot + (r.robust ? "+" : "-")] = r; }
+    const cmp = d.models.compare;
+    let h = `<table><thead><tr><th>Condition</th><th class="num">with pipeline</th><th class="num">without</th>${cmp ? `<th class="num">${esc(cmp.split(" [")[0])}</th>` : ""}</tr></thead><tbody>`;
+    for (const [c, v] of Object.entries(by)) h += `<tr><td>${esc(COND_TEXT[c] || c)}</td><td class="num"><b>${v["main+"] ? pct(v["main+"].acc) : "-"}</b></td><td class="num">${v["main-"] ? pct(v["main-"].acc) : "-"}</td>${cmp ? `<td class="num">${v["compare-"] ? pct(v["compare-"].acc) : "-"}</td>` : ""}</tr>`;
+    $("measured").innerHTML = h + `</tbody></table><div class="help" style="margin-top:6px">${esc(d.models.main.split(" [")[0])}, ${d.clips} NTU-120 test clips (people not seen in training), replayed at ${d.fps} fps; accuracy over the ${d.actions} demo actions. Measured ${esc(d.when)}.</div>`;
+  } catch (e) {}
+}
+
 // ---------------- state polling
 let lastState = {}, seq = null, spoken = {};
+const qLevelText = {good: "Good", fair: "Fair", poor: "Poor", "no person": "No person"};
 async function tick() {
   try {
     const s = await getj("/state"); lastState = s;
-    $("pModel").textContent = "Model: " + s.model + (s.model_top1 ? ` (NTU ${pct(s.model_top1)})` : "");
-    $("pSource").textContent = "Camera: " + s.source;
-    $("pStatus").textContent = s.status;
-    $("pStatus").className = "pill " + (/connected|synthetic/.test(s.status) ? "good" : /cannot|lost|no camera/.test(s.status) ? "bad" : "");
+    camOk = /connected|synthetic/.test(s.status);
+    $("pCam").textContent = camOk ? (s.source === "mock" ? "Test skeleton" : "Camera: " + s.source.replace(/^https?:\/\//, "").replace(/\/video$/, "")) : cap(s.status);
+    $("pCam").className = "pill " + (camOk ? "good" : /cannot|lost|no camera/.test(s.status) ? "bad" : "");
+    $("pModel").textContent = s.model + (s.model_top1 ? ` (NTU-120 ${pct(s.model_top1)})` : "");
     $("pBusy").style.display = s.busy ? "" : "none"; $("pBusy").textContent = s.busy;
-    if (tab === "live") {
-      $("label").textContent = cap(s.label); $("label").style.color = ALERTS.has(s.label) ? "var(--alert)" : "var(--ink)";
-      $("conf").textContent = s.conf > 0 ? `confidence ${pct(s.conf)}` : " "; $("nActs").textContent = s.n_actions;
-      $("bars").innerHTML = bars(s.top); $("barsAll").innerHTML = bars(s.top_all || []);
-      $("events").innerHTML = s.events.map(e => `<li class="${ALERTS.has(e.label) ? "warn" : ""}"><span><span class="time">${e.t}</span>${esc(cap(e.label))}</span><span>${pct(e.conf)}</span></li>`).join("");
+    if (!conditions.length && s.conditions) { conditions = s.conditions; renderChips(); }
+    $("setupCard").style.display = camOk ? "none" : "";
+    if (!camOk && !tick.searched && /no camera|cannot/.test(s.status)) { tick.searched = true; findPhone(); }
+    if (tab === "demo") {
+      $("label").textContent = cap(s.label);
+      $("label").style.color = ALERTS.has(s.label) ? "var(--alert)" : s.label === "input too degraded" ? "var(--warn)" : "var(--ink)";
+      $("conf").textContent = s.conf > 0 ? `confidence ${pct(s.conf)}` : s.label === "input too degraded" ? "too little of the body is left to judge: SafeSense says so instead of guessing" : " ";
+      $("cmp").style.display = s.cmp ? "block" : "none";
+      if (s.cmp) { $("cmpWho").textContent = s.cmp.name; $("cmpLabel").textContent = cap(s.cmp.label) + (s.cmp.conf > 0 ? `  (${pct(s.cmp.conf)})` : ""); }
+      const q = s.quality || {};
+      $("qLevel").textContent = qLevelText[q.level] || "-"; $("qLevel").className = "q-" + (q.level === "no person" ? "poor" : q.level);
+      $("qScore").textContent = q.score !== undefined ? `${q.score} / 100` : "";
+      const lv = v => v >= .75 ? "good" : v >= .5 ? "fair" : "poor";
+      if (q.level && q.level !== "no person") {
+        $("qBars").innerHTML = [
+          ["Joints visible", q.visible, pct(q.visible)], ["Pose confidence", q.confidence / 0.7, q.confidence.toFixed(2)],
+          ["Frame rate", q.fps / 15, q.fps.toFixed(1) + " fps"], ["Steadiness", q.stability, pct(q.stability)]
+        ].map(([n, v, t]) => bars([[n, v, t]], lv(v))).join("");
+        $("qNote").textContent = q.gap > 1 ? `Longest gap without a pose: ${q.gap.toFixed(1)} s.` : "";
+      } else { $("qBars").innerHTML = ""; $("qNote").textContent = "Step into view of the camera."; }
+      $("qInjected").textContent = s.degrade ? "injected: " + s.degrade : "";
+      if (!stressOn && !s.degrade && curCond !== "clean") { curCond = "clean"; renderChips(); }
+      $("robustSw").classList.toggle("on", s.robust); $("robustTxt").textContent = s.robust ? "on" : "off";
       $("alert").style.display = s.alert ? "block" : "none"; $("alertText").textContent = (s.alert || "").toUpperCase();
+      $("nActs").textContent = s.n_actions; $("bars").innerHTML = bars(s.top); $("barsAll").innerHTML = bars(s.top_all || []);
+      $("events").innerHTML = s.events.map(e => `<li class="${ALERTS.has(e.label) ? "warn" : ""}"><span><span class="time">${e.t}</span>${esc(cap(e.label))}${e.note ? ` <span class="help">(${esc(e.note)})</span>` : ""}</span><span>${pct(e.conf)}</span></li>`).join("");
       $("camfps").textContent = s.cam_fps ? s.cam_fps.toFixed(1) : "-"; $("posefps").textContent = s.pose_fps ? s.pose_fps.toFixed(1) : "-";
       $("posems").textContent = s.pose_ms ? s.pose_ms.toFixed(0) + " ms" : "-"; $("actms").textContent = s.act_ms ? s.act_ms.toFixed(1) + " ms" : "-";
       $("persons").textContent = s.persons; $("motion").textContent = (s.motion ?? 0).toFixed(2);
+      renderStress(s.stress, s);
     }
     if (s.job && s.job.name && tab === "tests") pollJob();
+    if (s.job && s.job.name === "robustness" && !s.job.running && tick.jobWas) loadMeasured();
+    tick.jobWas = s.job && s.job.running;
     recTick(s.rec);
-  } catch (e) { $("pStatus").textContent = "dashboard lost connection to app.py"; $("pStatus").className = "pill bad"; }
+  } catch (e) { $("pCam").textContent = "dashboard lost connection to app.py"; $("pCam").className = "pill bad"; }
   setTimeout(tick, 250);
 }
-setInterval(async () => { if (tab === "live") { try { const v = await getj("/api/view"); play("cvLive", v.view); } catch (e) {} } }, 3000);
+setInterval(async () => { if (tab === "demo") { try { const v = await getj("/api/view"); play("cvLive", v.view); } catch (e) {} } }, 3000);
+async function toggleRobust() { const on = !lastState.robust; $("robustSw").classList.toggle("on", on); await post("/api/settings", {robust: on}); }
 
 // ---------------- voice and beeps
 let actx = null;
 function beep(freq, ms) { try { actx = actx || new AudioContext(); const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = freq; o.connect(g); g.connect(actx.destination); g.gain.value = 0.25; o.start(); o.stop(actx.currentTime + ms / 1000); } catch (e) {} }
-function say(t) { if (!$("voice").checked || !window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.rate = 1.05; speechSynthesis.speak(u); }
+function say(t, always) { if ((!always && !$("voice").checked) || !window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.rate = 1.05; speechSynthesis.speak(u); }
 const spokenName = a => a.split(" (")[0].replace("/", " or ");
 
 // ---------------- recording
@@ -377,7 +556,8 @@ async function rescore() { $("refInfo").textContent = "re-scoring..."; const r =
 
 // ---------------- tests
 async function job(name) {
-  const body = {name, pkl: $("pkl").value, fps: $("rFps").value, window: $("rWin").value, n: $("rN").value, jitter: $("rJit").value};
+  const body = {name, pkl: $("pkl").value, fps: name === "robustness" ? $("bFps").value : $("rFps").value, window: $("rWin").value,
+                n: name === "robustness" ? $("bN").value : $("rN").value, jitter: $("rJit").value};
   const r = await post("/api/jobs/run", body);
   if (r.ok) msg("jobMsg", `Started: ${name}. Output on the right.`, "info"); else msg("jobMsg", r.msg, "bad");
   pollJob();
@@ -392,23 +572,19 @@ async function pollJob() {
 // ---------------- settings
 async function loadSettings() {
   const d = await getj("/api/settings"), s = d.settings;
-  $("sSource").value = s.source === "mock" ? "mock" : s.source; $("ips").textContent = d.laptop_ips.join(", ") || "unknown";
-  $("sModel").innerHTML = d.models.map(m => `<option value="${esc(m)}" ${m === s.model ? "selected" : ""}>${esc(m === "stgcnpp" ? "PYSKL ST-GCN++ (pretrained)" : m)}</option>`).join("");
+  $("sSource").value = s.source === "mock" ? "mock" : s.source.replace(/^http:\/\//, "").replace(/\/video$/, ""); $("ips").textContent = d.laptop_ips.join(", ") || "unknown";
+  const nice = m => m === "stgcnpp" ? "PYSKL ST-GCN++ (pretrained)" : m;
+  $("sModel").innerHTML = d.models.map(m => `<option value="${esc(m)}" ${m === s.model ? "selected" : ""}>${esc(nice(m))}</option>`).join("");
   if (!d.models.includes(s.model)) $("sModel").innerHTML += `<option selected value="${esc(s.model)}">${esc(s.model)} (missing)</option>`;
+  $("sCompare").innerHTML = [["", "none"], ["pipeline", "Same model without the robust pipeline"]].concat(d.models.map(m => [m, nice(m)]))
+    .map(([v, t]) => `<option value="${esc(v)}" ${v === s.compare ? "selected" : ""}>${esc(t)}</option>`).join("");
   $("sPose").value = s.pose; $("sWindow").value = s.window; $("sThreshold").value = s.threshold; $("sStill").value = s.still; $("sSampling").value = s.sampling;
   const mode = s.actions.trim() === "" ? "default" : s.actions.trim() === "all" ? "all" : "custom";
   document.querySelector(`input[name=aMode][value=${mode}]`).checked = true; $("sActions").value = mode === "custom" ? s.actions : "";
 }
-function setSrc(v) { $("sSource").value = v; testCam(); }
-async function testCam() {
-  msg("camMsg", "Testing...", "info");
-  const r = await getj("/api/camera_test?source=" + encodeURIComponent($("sSource").value));
-  msg("camMsg", r.msg + (r.ok ? " Press Save and apply to use it." : ""), r.ok ? "good" : "bad");
-  $("ips").textContent = (r.laptop_ips || []).join(", ") || "unknown";
-}
 async function saveSettings() {
   const mode = document.querySelector("input[name=aMode]:checked").value;
-  const body = {source: $("sSource").value, model: $("sModel").value, pose: $("sPose").value, window: $("sWindow").value,
+  const body = {model: $("sModel").value, compare: $("sCompare").value, pose: $("sPose").value, window: $("sWindow").value,
                 threshold: $("sThreshold").value, still: $("sStill").value, sampling: $("sSampling").value,
                 actions: mode === "default" ? "" : mode === "all" ? "all" : $("sActions").value};
   msg("setMsg", "Applying...", "info");
@@ -418,8 +594,8 @@ async function saveSettings() {
 
 (async () => {
   const d = await getj("/api/settings"); ACTS_ALL = d.classes; STRONG = d.strong; renderActs();
-  if (!d.settings.source) { showTab("settings"); msg("camMsg", "Set the camera first: type the address IP Webcam shows on the phone, press Test, then Save and apply.", "info"); }
-  tick();
+  $("stExpected").innerHTML += STRONG.map(a => `<option value="${esc(a)}">${esc(cap(a))}</option>`).join("");
+  loadMeasured(); tick();
 })();
 </script>
 </body>
