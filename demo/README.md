@@ -8,7 +8,7 @@ Android phone camera -> Wi-Fi -> laptop: RTMPose finds 17 body joints -> origina
 cd ~/Desktop/final-year-project/live-demo && bash start.sh --install
 ```
 
-This starts the dashboard and opens http://localhost:8000 in the browser. `--install` also adds **SafeSense Demo** to the
+This starts the dashboard and opens http://localhost:8765 in the browser. `--install` also adds **SafeSense Demo** to the
 applications menu, so from then on you can start it without a terminal. Everything else is done in the dashboard:
 
 - **Settings**: type the address IP Webcam shows on the phone and press **Test**. It tells you in plain words whether

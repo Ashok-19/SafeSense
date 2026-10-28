@@ -1,6 +1,6 @@
 """SafeSense live demo and control dashboard: phone camera -> RTMPose (17 COCO joints) -> action model -> browser.
 
-Start:  bash start.sh            (opens http://localhost:8000; everything else is set from the dashboard)
+Start:  bash start.sh            (opens http://localhost:8765; everything else is set from the dashboard)
    or:  python app.py [--source http://<phone-ip>:8080/video] [--checkpoint safesense_pose_ntu120.pt] [--mock]
 
 The dashboard has four tabs: Live (camera, skeleton, current action, what the model sees), Record & check (guided
@@ -29,7 +29,7 @@ ap.add_argument("--threshold", type=float, default=None, help="minimum smoothed 
 ap.add_argument("--still", type=float, default=None, help="movement range (torso lengths) below which the person counts as still; 0 turns it off")
 ap.add_argument("--debug", action="store_true", help="print motion and the top prediction for every window")
 ap.add_argument("--actions", default=None, help='comma-separated NTU action names, "all" for all 120 (default: the single-person actions recognised best)')
-ap.add_argument("--port", type=int, default=8000)
+ap.add_argument("--port", type=int, default=8765)
 ap.add_argument("--stgcnpp", action="store_true", help="use the pretrained PYSKL ST-GCN++ (stgcnpp_j.pth / stgcnpp_b.pth next to app.py)")
 ap.add_argument("--mock", action="store_true", help="synthetic skeleton instead of camera and pose model")
 args = ap.parse_args()
