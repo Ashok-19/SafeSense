@@ -25,6 +25,10 @@ URL="http://localhost:8000"
 if curl -fs "$URL/api/ping" >/dev/null 2>&1; then   # already running: just open it
   xdg-open "$URL" >/dev/null 2>&1 || echo "open $URL"; exit 0
 fi
+if curl -fs "$URL/state" >/dev/null 2>&1; then          # an older demo version still running: stop it
+  echo "Stopping the older demo that is still running on port 8000..."
+  pkill -f "python.*app.py" ; sleep 2
+fi
 [ -d .venv ] || bash setup.sh
 source .venv/bin/activate
 (for i in $(seq 1 60); do sleep 1; curl -fs "$URL/api/ping" >/dev/null 2>&1 && { xdg-open "$URL" >/dev/null 2>&1; break; }; done) &
