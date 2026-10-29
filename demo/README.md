@@ -16,7 +16,7 @@ applications menu, so from then on you can start it without a terminal.
 1. Open **SafeSense Cam** on the phone. Put the laptop on the same Wi-Fi, or on the phone's hotspot.
 2. Start SafeSense Demo. If no camera is set, the Demo page searches the network for the phone by itself; press
    **Use** on the address it finds. It is remembered for next time.
-3. Stand in view and do an action. Then press the **Stress the input** buttons (hide right arm, hide legs, sensor
+3. Stand in view and do an action. Then press the **Stress the input** buttons (hide right arm (elbow and wrist), hide legs, sensor
    noise, lose 50% of frames, drop to 5 fps, all at once), or **Run automatic stress test** while you keep doing one
    action.
 

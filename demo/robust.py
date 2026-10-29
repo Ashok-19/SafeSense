@@ -11,7 +11,7 @@ The same code runs in the dashboard (app.py) and in the offline robustness test 
 """
 import numpy as np
 
-JOINT_GROUPS = {"right arm": [6, 8, 10], "left arm": [5, 7, 9], "legs": [11, 12, 13, 14, 15, 16], "head": [0, 1, 2, 3, 4]}
+JOINT_GROUPS = {"right arm": [8, 10], "left arm": [7, 9], "legs": [11, 12, 13, 14, 15, 16], "head": [0, 1, 2, 3, 4]}
 CONF_MIN = 0.3          # joints below this pose confidence count as not seen
 GAP_FILL_S = 0.6        # fill a missing joint from its neighbours in time when the gap is at most this long
 GLITCH_TORSO = 0.8      # a joint more than this many torso lengths from its local median is a pose glitch
@@ -73,11 +73,17 @@ class Degrader:
 
 
 def torso_length(kp, sc):
-    """Median shoulder-centre to hip-centre distance over frames where all four are seen. kp [n,17,2], sc [n,17]."""
-    ok = (sc[:, [5, 6, 11, 12]] > CONF_MIN).all(1)
-    if not ok.any(): return None
-    sho = (kp[ok, 5] + kp[ok, 6]) / 2; hip = (kp[ok, 11] + kp[ok, 12]) / 2
-    return float(np.median(np.linalg.norm(sho - hip, axis=-1)))
+    """Median shoulder to hip distance (centres of whichever shoulders and hips are seen), else a third of the body
+    height, else None. kp [n,17,2], sc [n,17]."""
+    seen = sc > CONF_MIN
+    s_ok, h_ok = seen[:, [5, 6]], seen[:, [11, 12]]
+    ok = s_ok.any(1) & h_ok.any(1)
+    if ok.any():
+        sho = (kp[ok][:, [5, 6]] * s_ok[ok][..., None]).sum(1) / s_ok[ok].sum(1, keepdims=True)
+        hip = (kp[ok][:, [11, 12]] * h_ok[ok][..., None]).sum(1) / h_ok[ok].sum(1, keepdims=True)
+        return max(float(np.median(np.linalg.norm(sho - hip, axis=-1))), 1.0)
+    if seen.sum() >= 2: return max(float(np.ptp(kp[seen][:, 1])) / 3, 1.0)
+    return None
 
 
 def clean_window(kp, sc, ts):
@@ -138,4 +144,4 @@ def measure_quality(items, window):
     if gap > 1.0: score *= 0.7
     level = "good" if score >= 85 else "fair" if score >= 60 else "poor"
     return dict(score=round(score), level=level, visible=round(visible, 3), confidence=round(confidence, 3),
-                fps=round(fps, 1), stability=round(stability, 3), gap=round(gap, 2))
+                fps=round(float(fps), 1), stability=round(stability, 3), gap=round(gap, 2))
